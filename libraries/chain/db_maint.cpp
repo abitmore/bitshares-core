@@ -142,6 +142,9 @@ void database::pay_workers( share_type& budget )
 
 void database::update_active_witnesses()
 { try {
+   ilog("update_active_witnesses");
+   ilog("witness_count_histogram_buffer.size = ${s}", ("s", _witness_count_histogram_buffer.size() ) );
+   ilog("total_voting_stake = ${t}", ("t",_total_voting_stake));
    assert( _witness_count_histogram_buffer.size() > 0 );
    share_type stake_target = _total_voting_stake / 2;
    share_type stake_tally = _witness_count_histogram_buffer[0];
@@ -149,10 +152,16 @@ void database::update_active_witnesses()
    if( stake_target > 0 )
       while( (witness_count < _witness_count_histogram_buffer.size() - 1)
              && (stake_tally <= stake_target) )
+      {
+         ilog("buffer ${i} stake ${s}",("i",witness_count+1) ("s",_witness_count_histogram_buffer[witness_count+1]));
          stake_tally += _witness_count_histogram_buffer[++witness_count];
+      }
+   ilog("stake_tally = ${s}", ("s",stake_tally));
+   ilog("witness_count = ${c}", ("c",witness_count));
 
    const chain_property_object& cpo = get_chain_properties();
    auto wits = sort_votable_objects<witness_index>(std::max(witness_count*2+1, (size_t)cpo.immutable_parameters.min_witness_count));
+   ilog("total witness count = ${c}", ("c",wits.size()));
    const global_property_object& gpo = get_global_properties();
 
    for( const witness_object& wit : wits )
@@ -160,6 +169,7 @@ void database::update_active_witnesses()
       modify( wit, [&]( witness_object& obj ){
               obj.total_votes = _vote_tally_buffer[wit.vote_id];
               });
+      ilog("witness ${w} total_votes ${v}", ("w", wit.id)("v", wit.total_votes));
    }
 
    // Update witness authority
@@ -392,6 +402,7 @@ void database::process_budget()
 
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
+   ilog("perform_chain_maintenance");
    const auto& gpo = get_global_properties();
 
    struct vote_tally_helper {
@@ -423,12 +434,14 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
                   + (stake_account.cashback_vb.valid() ? (*stake_account.cashback_vb)(d).balance.amount.value: 0)
                   + d.get_balance(stake_account.get_id(), asset_id_type()).amount.value;
 
+            ilog("stake_account ${a} voting_stake ${v} num_witness ${n}", ("a",stake_account.id)("v",voting_stake)("n",opinion_account.options.num_witness));
             for( vote_id_type id : opinion_account.options.votes )
             {
                uint32_t offset = id.instance();
                // if they somehow managed to specify an illegal offset, ignore it.
                if( offset < d._vote_tally_buffer.size() )
                   d._vote_tally_buffer[offset] += voting_stake;
+               ilog("stake_account ${a} voting_stake ${v} vote_for ${n} total ${t}", ("a",stake_account.id)("v",voting_stake)("n",offset)("t",d._vote_tally_buffer[offset]));
             }
 
             if( opinion_account.options.num_witness <= props.parameters.maximum_witness_count )
@@ -442,6 +455,7 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
                // member was voting for a high number, then the
                // parameter was lowered.
                d._witness_count_histogram_buffer[offset] += voting_stake;
+               ilog("d._witness_count_histogram_buffer[${i}] = ${v}", ("i",offset)("v",d._witness_count_histogram_buffer[offset]));
             }
             if( opinion_account.options.num_committee <= props.parameters.maximum_committee_count )
             {
@@ -455,6 +469,7 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
             }
 
             d._total_voting_stake += voting_stake;
+            ilog("d._total_voting_stake = ${v}", ("v",d._total_voting_stake));
          }
       }
    } tally_helper(*this, gpo);
