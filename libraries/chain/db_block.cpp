@@ -639,6 +639,7 @@ operation_result database::apply_operation(transaction_evaluation_state& eval_st
 { try {
    int i_which = op.which();
    uint64_t u_which = uint64_t( i_which );
+   dlog( "Apply operation, op.which: ${i} ${u}, op_eval.size: ${s}", ("i",i_which)("u",u_which)("s",_operation_evaluators.size()) );
    if( i_which < 0 )
       assert( "Negative operation tag" && false );
    if( u_which >= _operation_evaluators.size() )
