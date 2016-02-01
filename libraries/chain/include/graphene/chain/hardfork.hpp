@@ -44,3 +44,7 @@
 
 // #483 Operation history numbering change
 #define HARDFORK_483_TIME (fc::time_point_sec( 1450378800 ))
+
+// BSIP#10 Percentage based transfer fee
+// TODO hard fork time need to be re-scheduled
+#define HARDFORK_BSIP10_TIME (fc::time_point_sec( 1450378800 ))
