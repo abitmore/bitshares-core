@@ -122,7 +122,7 @@ void_result committee_member_update_core_asset_evaluator::do_apply(const committ
    a_copy.options.max_market_fee = o.new_options.max_market_fee;
    a_copy.set_transfer_fee_mode( new_mode );
 
-   d.modify(*a, [&](asset_object& ao) {
+   d.modify(a, [&](asset_object& ao) {
       ao.options = a_copy.options;
    });
 
