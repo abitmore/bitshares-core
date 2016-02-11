@@ -274,10 +274,14 @@ namespace graphene { namespace db {
 
          virtual void  remove( const object& obj ) override
          {
+dlog( "remove ${o}", ("o",obj) );
             for( const auto& item : _sindex )
                item->object_removed( obj );
+dlog( "on remove ${o}", ("o",obj) );
             on_remove(obj);
+dlog( "der remove ${o}", ("o",obj) );
             DerivedIndex::remove(obj);
+dlog( "der removed ${o}", ("o",obj) );
          }
 
          virtual void modify( const object& obj, const std::function<void(object&)>& m )override

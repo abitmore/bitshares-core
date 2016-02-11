@@ -124,6 +124,7 @@ void undo_database::undo()
 void undo_database::merge()
 {
    FC_ASSERT( _active_sessions > 0 );
+   dlog( "_stack.size=${s}",("s",_stack.size()) );
    FC_ASSERT( _stack.size() >=2 );
    auto& state = _stack.back();
    auto& prev_state = _stack[_stack.size()-2];

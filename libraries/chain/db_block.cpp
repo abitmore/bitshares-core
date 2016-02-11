@@ -266,9 +266,9 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
          eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
       dlog( "push_proposal ${proposal}, before remove, eval_state.op_results=${r}", ("proposal",proposal)("r",eval_state.operation_results) );
       remove(proposal);
-      dlog( "push_proposal ${proposal}, removed, session=$(s)", ("proposal",proposal)("s","session") );
+      dlog( "push_proposal removed, session=$(s)", ("s","session") );
       session.merge();
-      dlog( "push_proposal ${proposal}, removed, session merged: $(s)", ("proposal",proposal)("s","session") );
+      dlog( "push_proposal session merged, session=$(s)", ("s","session") );
    } catch ( const fc::exception& e ) {
       if( head_block_time() <= HARDFORK_483_TIME )
       {
@@ -282,7 +282,7 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
       {
          _applied_ops.resize( old_applied_ops_size );
       }
-      elog( "e", ("e",e.to_detail_string() ) );
+      elog( "${e}", ("e",e.to_detail_string() ) );
       throw;
    }
 
