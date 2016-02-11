@@ -33,7 +33,8 @@ share_type transfer_operation::calculate_fee( const fee_parameters_type& schedul
    share_type core_fee_required;
    auto o = asset_obj.get_transfer_fee_mode();
    if( o == asset_transfer_fee_mode_flat
-         || ( asset_obj.options.core_exchange_rate.is_null() && amount.asset_id != asset_id_type() )  ) // flat fee mode
+         || ( asset_obj.options.core_exchange_rate.is_null() && !(amount.asset_id == asset_id_type()) )
+      ) // flat fee mode
    {
       core_fee_required = schedule.fee;
    }
@@ -67,7 +68,8 @@ share_type transfer_v2_operation::calculate_fee( const fee_parameters_type& sche
    auto o = asset_obj.get_transfer_fee_mode();
    dlog( "transfer ${amount}, asset_id=${assetid}, compare to ${core}, result=${r}", ("amount",amount)("assetid",amount.asset_id)("core",asset_id_type())("r",amount.asset_id==asset_id_type()) );
    if( o == asset_transfer_fee_mode_flat
-         || ( asset_obj.options.core_exchange_rate.is_null() && amount.asset_id != asset_id_type() )  ) // flat fee mode
+         || ( asset_obj.options.core_exchange_rate.is_null() && !(amount.asset_id == asset_id_type()) )
+      ) // flat fee mode
    {
       auto core_fee_128 = fc::uint128(schedule.flat_fee);
       core_fee_128 *= scale;
