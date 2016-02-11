@@ -120,11 +120,15 @@ void_result committee_member_update_core_asset_evaluator::do_apply(const committ
    a_copy = a;
    a_copy.options.market_fee_percent = o.new_options.market_fee_percent;
    a_copy.options.max_market_fee = o.new_options.max_market_fee;
+   ilog( "set_transfer_fee_mode ${mode} to ${new_core}", ("mode",new_mode)("new_core",a_copy) );
    a_copy.set_transfer_fee_mode( new_mode );
+
+   ilog( "update_core_asset ${core} to ${new_core}", ("core",core)("new_core",a_copy) );
 
    d.modify(a, [&](asset_object& ao) {
       ao.options = a_copy.options;
    });
+   ilog( "update_core_asset ${core} to ${new_core} done ", ("core",core)("new_core",a_copy) );
 
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }

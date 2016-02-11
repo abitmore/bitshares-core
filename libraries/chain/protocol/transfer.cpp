@@ -65,6 +65,7 @@ share_type transfer_v2_operation::calculate_fee( const fee_parameters_type& sche
 {
    share_type core_fee_required;
    auto o = asset_obj.get_transfer_fee_mode();
+   dlog( "transfer ${amount}, asset_id=${assetid}, compare to ${core}", ("amount",amount)("assetid",amount.asset_id)("core",asset_id_type()) );
    if( o == asset_transfer_fee_mode_flat
          || ( asset_obj.options.core_exchange_rate.is_null() && amount.asset_id != asset_id_type() )  ) // flat fee mode
    {

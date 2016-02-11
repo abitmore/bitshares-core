@@ -264,8 +264,11 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
       auto session = _undo_db.start_undo_session(true);
       for( auto& op : proposal.proposed_transaction.operations )
          eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
+      dlog( "push_proposal ${proposal}, before remove, eval_state.op_results=${r}", ("proposal",proposal)("r",eval_state.operation_results) );
       remove(proposal);
+      dlog( "push_proposal ${proposal}, removed, session=$(s)", ("proposal",proposal)("s","session") );
       session.merge();
+      dlog( "push_proposal ${proposal}, removed, session merged: $(s)", ("proposal",proposal)("s","session") );
    } catch ( const fc::exception& e ) {
       if( head_block_time() <= HARDFORK_483_TIME )
       {
@@ -515,7 +518,9 @@ void database::_apply_block( const signed_block& next_block )
 
    create_block_summary(next_block);
    clear_expired_transactions();
+   ilog( "before clear_expired_proposals" );
    clear_expired_proposals();
+   ilog( "after clear_expired_proposals" );
    clear_expired_orders();
    update_expired_feeds();
    update_withdraw_permissions();
@@ -649,7 +654,9 @@ operation_result database::apply_operation(transaction_evaluation_state& eval_st
       assert( "No registered evaluator for this operation" && false );
    auto op_id = push_applied_operation( op );
    auto result = eval->evaluate( eval_state, op, true );
+   dlog( "Evaluated operation ${op}, id=${opid}, result=${result}", ("op",op)("opid",op_id)("result",result) );
    set_applied_operation_result( op_id, result );
+   dlog( "Applied result of operation ${op}, id=${opid}, result=${result}", ("op",op)("opid",op_id)("result",result) );
    return result;
 } FC_CAPTURE_AND_RETHROW( (op) ) }
 

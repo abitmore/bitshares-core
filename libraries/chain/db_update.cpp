@@ -167,6 +167,8 @@ void database::clear_expired_proposals()
    while( !proposal_expiration_index.empty() && proposal_expiration_index.begin()->expiration_time <= head_block_time() )
    {
       const proposal_object& proposal = *proposal_expiration_index.begin();
+      ilog("try to apply proposed transaction on its expiration. \n${proposal}",
+              ("proposal", proposal));
       processed_transaction result;
       try {
          if( proposal.is_authorized_to_execute(*this) )
