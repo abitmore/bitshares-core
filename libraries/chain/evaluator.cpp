@@ -78,12 +78,15 @@ database& generic_evaluator::db()const { return trx_state->db(); }
    {
       const auto& fee_options = db().get_global_properties().parameters.get_coin_seconds_as_fees_options();
       const auto& max_op_fee = fee_options.max_fee_from_coin_seconds_by_operation;
+      dlog( "max_op_fee.size()=${s}, o.which=${w}", ("s",max_op_fee.size())("w",o.which()) );
+      if( max_op_fee.size() > o.which() ) dlog( "max_op_fee[o.which()]=${f}", ("f",max_op_fee[o.which()]) );
       if( max_op_fee.size() > o.which() && max_op_fee[o.which()] > 0 ) // if fee can be paid with coin seconds
       {
          const asset& core_balance = db().get_balance( fee_paying_account->get_id(), asset_id_type() );
          const auto payer_membership = fee_paying_account->get_membership( db().head_block_time() );
          coin_seconds_earned = fee_paying_account_statistics->compute_coin_seconds_earned(
                                        core_balance, db().head_block_time() );
+         dlog( "coin_seconds_earned=${c}", ("c",coin_seconds_earned) );
          if( coin_seconds_earned > 0 ) // if payer have some coin seconds to pay
          {
             coin_seconds_as_fees_rate = fee_options.coin_seconds_as_fees_rate[payer_membership];
@@ -92,6 +95,8 @@ database& generic_evaluator::db()const { return trx_state->db(); }
             fees_accumulated_from_coin_seconds = coin_seconds_to_fees.to_uint64();
 
             share_type max_fees_allowed = fee_options.max_accumulated_fees_from_coin_seconds[payer_membership];
+            dlog( "max_fees_payable=${p}, max_fees_allowed=${a}",
+                  ("p",max_fees_payable_with_coin_seconds)("a",max_fees_allowed) );
             if( fees_accumulated_from_coin_seconds > max_fees_allowed ) // if accumulated too many coin seconds, truncate
             {
                fees_accumulated_from_coin_seconds = max_fees_allowed;
@@ -101,6 +106,8 @@ database& generic_evaluator::db()const { return trx_state->db(); }
             max_fees_payable_with_coin_seconds = std::min( fees_accumulated_from_coin_seconds, max_op_fee[o.which()] );
          }
       }
+      dlog( "max_fees_payable=${p}, new coin_seconds_earned=${c}",
+            ("p",max_fees_payable_with_coin_seconds)("c",coin_seconds_earned) );
    }
 
    void generic_evaluator::convert_fee()
