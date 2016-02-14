@@ -198,6 +198,7 @@ void transfer_v2_evaluator::pay_fee( const transfer_v2_operation& o )
          s.pay_fee_pre_split_network( core_fee_paid, vesting_threshold, scaled_min_fee.to_uint64() );
       }
    });
+   pay_fee_with_coin_seconds();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
 void_result override_transfer_evaluator::do_evaluate( const override_transfer_operation& op )
