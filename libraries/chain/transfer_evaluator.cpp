@@ -37,10 +37,13 @@ void_result transfer_evaluator::do_evaluate( const transfer_operation& op )
    try {
 
       share_type required_core_fee = d.current_fee_schedule().calculate_fee( op, asset_type ).amount;
-      GRAPHENE_ASSERT( core_fee_paid >= required_core_fee,
+      GRAPHENE_ASSERT( core_fee_paid + max_fees_payable_with_coin_seconds >= required_core_fee,
                     insufficient_fee,
                     "Insufficient Fee Paid",
                     ("core_fee_paid",core_fee_paid)("required",required_core_fee) );
+      // if some fees are paid with coin seconds
+      if( core_fee_paid < required_core_fee )
+         fees_paid_with_coin_seconds = required_core_fee - core_fee_paid;
 
       if( asset_type.options.flags & white_list )
       {
@@ -111,10 +114,13 @@ void_result transfer_v2_evaluator::do_evaluate( const transfer_v2_operation& op 
          FC_THROW( "Operation requires hard fork BSIP10" );
 
       share_type required_core_fee = d.current_fee_schedule().calculate_fee( op, asset_type ).amount;
-      GRAPHENE_ASSERT( core_fee_paid >= required_core_fee,
+      GRAPHENE_ASSERT( core_fee_paid + max_fees_payable_with_coin_seconds >= required_core_fee,
                     insufficient_fee,
                     "Insufficient Fee Paid",
                     ("core_fee_paid",core_fee_paid)("required",required_core_fee) );
+      // if some fees are paid with coin seconds
+      if( core_fee_paid < required_core_fee )
+         fees_paid_with_coin_seconds = required_core_fee - core_fee_paid;
 
       if( asset_type.options.flags & white_list )
       {
