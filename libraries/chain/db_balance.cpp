@@ -41,7 +41,19 @@ asset database::get_balance(const account_object& owner, const asset_object& ass
 {
    return get_balance(owner.get_id(), asset_obj.get_id());
 }
-
+vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type asset_id) const
+{
+	vector<pair<account_id_type, share_type>> results;
+	pair<account_id_type, share_type> result;
+	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
+	for (auto itr = index.find(asset_id); itr != index.end() && itr->asset_type == asset_id; itr++)
+	{
+		result.first = itr->owner;
+		result.second = itr->balance;
+		results.push_back(result);
+	}
+	return results;
+}
 string database::to_pretty_string( const asset& a )const
 {
    return a.asset_id(*this).amount_to_pretty_string(a.amount);
