@@ -20,6 +20,7 @@
  */
 #include <graphene/chain/protocol/fee_schedule.hpp>
 #include <fc/smart_ref_impl.hpp>
+#include <algorithm>
 
 namespace fc
 {
