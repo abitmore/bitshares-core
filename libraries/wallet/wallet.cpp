@@ -1986,8 +1986,8 @@ public:
 		   dvd_op.describtion = discription;
 		   dvd_op.dividend_asset = dividends_asset_obj->get_id();
 		   dvd_op.shares_asset = share_asset_obj->get_id();
-		   dvd_op.min_shares = min_shares;
-		   dvd_op.value_per_shares = value_per_shares;
+		   dvd_op.min_shares = min_shares*share_asset_obj->precision;
+		   dvd_op.value_per_shares = value_per_shares*dividends_asset_obj->precision;
 
 		   signed_transaction tx;
 		   tx.operations.push_back(dvd_op);
