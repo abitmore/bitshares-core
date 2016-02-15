@@ -164,7 +164,7 @@ namespace detail {
                //"185.25.22.21:1776", // liondani (greece)
                //"23.95.43.126:50696", // iHashFury
                //"109.73.172.144:50696" // iHashFury
-               127.0.0.1:1776
+               //127.0.0.1:1776
             };
             for( const string& endpoint_string : seeds )
             {
