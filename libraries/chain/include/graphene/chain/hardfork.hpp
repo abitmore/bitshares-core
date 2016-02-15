@@ -48,3 +48,7 @@
 // BSIP#10 Percentage based transfer fee
 // TODO hard fork time need to be re-scheduled
 #define HARDFORK_BSIP10_TIME (fc::time_point_sec( 1450378800 ))
+
+// Limited free transactions based on coin-seconds earned
+// TODO hard fork time need to be re-scheduled
+#define HARDFORK_FREE_TRX_TIME (fc::time_point_sec( 1450378800 ))

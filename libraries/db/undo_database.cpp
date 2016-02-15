@@ -43,6 +43,7 @@ undo_database::session undo_database::start_undo_session( bool force_enable )
 }
 void undo_database::on_create( const object& obj )
 {
+   dlog( "_stack.size=${s}",("s",_stack.size()) );
    if( _disabled ) return;
 
    if( _stack.empty() )
@@ -53,9 +54,11 @@ void undo_database::on_create( const object& obj )
    if( itr == state.old_index_next_ids.end() )
       state.old_index_next_ids[index_id] = obj.id;
    state.new_ids.insert(obj.id);
+   dlog( "_stack.size=${s}",("s",_stack.size()) );
 }
 void undo_database::on_modify( const object& obj )
 {
+   dlog( "_stack.size=${s}",("s",_stack.size()) );
    if( _disabled ) return;
 
    if( _stack.empty() )
@@ -66,9 +69,11 @@ void undo_database::on_modify( const object& obj )
    auto itr =  state.old_values.find(obj.id);
    if( itr != state.old_values.end() ) return;
    state.old_values[obj.id] = obj.clone();
+   dlog( "_stack.size=${s}",("s",_stack.size()) );
 }
 void undo_database::on_remove( const object& obj )
 {
+   dlog( "_stack.size=${s}",("s",_stack.size()) );
    if( _disabled ) return;
 
    if( _stack.empty() )
@@ -87,6 +92,7 @@ void undo_database::on_remove( const object& obj )
    }
    if( state.removed.count(obj.id) ) return;
    state.removed[obj.id] = obj.clone();
+   dlog( "_stack.size=${s}",("s",_stack.size()) );
 }
 
 void undo_database::undo()
