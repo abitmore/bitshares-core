@@ -1386,7 +1386,22 @@ class wallet_api
          const approval_delta& delta,
          bool broadcast /* = false */
          );
-
+	  /**dividend to asset
+		 *@param share_asset dividend to people who hold this asset.
+		 *@param dividend_asset what to do dividend.
+		 *@param min_shares share asset holder that have more than min_shares can get dividend.
+		 *@param value_per_shares.
+		 *@param block_no base on which block. 
+		 *@param discription discription about this dividend.
+		 */
+	  signed_transaction dividend(string issuer,
+		  string share_asset,
+		  string dividend_asset,
+		  uint16_t min_shares,
+		  uint16_t value_per_shares,
+		  uint64_t block_no,
+		  string discription,
+		  bool broadcast = false);
       void dbg_make_uia(string creator, string symbol);
       void dbg_make_mia(string creator, string symbol);
       void flood_network(string prefix, uint32_t number_of_transactions);
@@ -1573,4 +1588,5 @@ FC_API( graphene::wallet::wallet_api,
         (blind_transfer)
         (blind_history)
         (receive_blind_transfer)
+		(dividend)
       )

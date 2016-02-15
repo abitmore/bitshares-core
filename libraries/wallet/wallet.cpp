@@ -1965,7 +1965,38 @@ public:
          trx.validate();
          return sign_transaction(trx, broadcast);
    } FC_CAPTURE_AND_RETHROW((order_id)) }
+   signed_transaction dividend(string issuer, string share_asset,
+	   string dividend_asset,
+	   uint16_t min_shares,
+	   uint16_t value_per_shares,
+	   uint64_t block_no,
+	   string discription,
+	   bool broadcast = false)
+   {
+	   try {
+		   FC_ASSERT(!self.is_locked());
+		   fc::optional<asset_object> dividends_asset_obj = get_asset(dividend_asset);
+		   fc::optional<asset_object> share_asset_obj = get_asset(share_asset);
+		   FC_ASSERT(dividends_asset_obj, "Could not find dividend asset matching ${asset}", ("asset", dividend_asset));
+		   FC_ASSERT(share_asset_obj, "Could not find share asset matching ${asset}", ("asset", share_asset));
+		   account_object issuer_obj = get_account(issuer);
+		   dividend_operation dvd_op;
+		   dvd_op.isser = get_account_id(issuer);
+		   dvd_op.block_no = block_no;
+		   dvd_op.describtion = discription;
+		   dvd_op.dividend_asset = dividends_asset_obj->get_id();
+		   dvd_op.shares_asset = share_asset_obj->get_id();
+		   dvd_op.min_shares = min_shares;
+		   dvd_op.value_per_shares = value_per_shares;
 
+		   signed_transaction tx;
+		   tx.operations.push_back(dvd_op);
+		   set_operation_fees(tx, _remote_db->get_global_properties().parameters.current_fees);
+		   tx.validate();
+		   return sign_transaction(tx, broadcast);
+	   }
+	   FC_CAPTURE_AND_RETHROW((issuer)(share_asset)(dividend_asset)(min_shares)(value_per_shares)(block_no)(discription))
+   }
    signed_transaction transfer(string from, string to, string amount,
                                string asset_symbol, string memo, bool broadcast = false)
    { try {
@@ -3477,7 +3508,16 @@ map<public_key_type, string> wallet_api::dump_private_keys()
    FC_ASSERT(!is_locked());
    return my->_keys;
 }
-
+signed_transaction wallet_api::dividend(string issuer, string share_asset,
+	string dividend_asset,
+	uint16_t min_shares,
+	uint16_t value_per_shares,
+	uint64_t block_no,
+	string discription,
+	bool broadcast)
+{
+	return my->dividend(issuer, share_asset, dividend_asset, min_shares, value_per_shares, block_no, discription, broadcast);
+}
 signed_transaction wallet_api::upgrade_account( string name, bool broadcast )
 {
    return my->upgrade_account(name,broadcast);
