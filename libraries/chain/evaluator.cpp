@@ -50,6 +50,7 @@ database& generic_evaluator::db()const { return trx_state->db(); }
       const database& d = db();
       fee_from_account = fee;
       FC_ASSERT( fee.amount >= 0 );
+      FC_ASSERT( fee.amount == 0 || fee.asset_id != asset_id_type(), "CORE asset can not be used to pay fee" );
       fee_paying_account = &account_id(d);
       fee_paying_account_statistics = &fee_paying_account->statistics(d);
 
