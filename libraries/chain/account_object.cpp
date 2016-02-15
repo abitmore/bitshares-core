@@ -213,13 +213,14 @@ void account_statistics_object::pay_fee_pre_split_network( share_type core_fee,
                                                            share_type cashback_vesting_threshold,
                                                            share_type network_fee )
 {
-   FC_ASSERT( core_fee >= network_fee,
-              "Total fee should not be less than the part to network.");
-   pending_fees_to_network += network_fee;
+   if( core_fee <= 0 ) return;
+   share_type new_network_fee = network_fee;
+   if( core_fee < network_fee ) new_network_fee = core_fee;
+   pending_fees_to_network += new_network_fee;
    if( core_fee > cashback_vesting_threshold )
-      pending_fees_to_non_network += ( core_fee - network_fee );
+      pending_fees_to_non_network += ( core_fee - new_network_fee );
    else
-      pending_vested_fees_to_non_network += ( core_fee - network_fee );
+      pending_vested_fees_to_non_network += ( core_fee - new_network_fee );
 }
 
 fc::uint128_t account_statistics_object::compute_coin_seconds_earned(const asset& balance, fc::time_point_sec now)const
