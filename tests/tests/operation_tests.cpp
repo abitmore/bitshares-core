@@ -537,7 +537,45 @@ BOOST_AUTO_TEST_CASE( update_account )
       throw;
    }
 }
+BOOST_AUTO_TEST_CASE(dividend_operation)
+{
+	try {
+		//INVOKE(create_account_test);
+		const account_object& hold1 = create_account("hold1");
+		const account_object& hold2 = create_account("hold2");
+		const account_object& hold3 = create_account("hold3");
+		const asset_object& uia = create_user_issued_asset("ABCD");
+		account_id_type committee_account;
+		asset committee_balance = db.get_balance(account_id_type(), asset_id_type());
+		issue_uia(hold1, asset(1050, uia.get_id()));
+		issue_uia(hold2, asset(2000, uia.get_id()));
+		account_object com = *db.get_index_type<account_index>().indices().get<by_id>().find(committee_account);
+		issue_uia(com, asset(200000, uia.get_id()));
+		transfer(com, hold3, asset(3000, uia.get_id()));
+		graphene::chain::dividend_operation dop1;
 
+		dop1.isser = committee_account;
+		dop1.block_no = 0;
+		dop1.shares_asset = uia.id;
+		dop1.dividend_asset = asset_id_type();
+		dop1.min_shares = 1000;
+		dop1.value_per_shares = 99;
+
+		trx.operations.push_back(dop1);
+		for (auto& op : trx.operations) db.current_fee_schedule().set_fee(op);
+		asset fee = trx.operations.front().get<graphene::chain::dividend_operation>().fee;
+		trx.validate();
+		PUSH_TX(db, trx, ~0);
+		share_type hold1_ = get_balance(hold1, asset_id_type()(db));
+		BOOST_CHECK_EQUAL(get_balance(hold1, asset_id_type()(db)), 99);
+		BOOST_CHECK_EQUAL(get_balance(hold2, asset_id_type()(db)), 198);
+		BOOST_CHECK_EQUAL(get_balance(hold3, asset_id_type()(db)), 297);
+	}
+	catch (fc::exception& e) {
+		edump((e.to_detail_string()));
+		throw;
+	}
+}
 BOOST_AUTO_TEST_CASE( transfer_core_asset )
 {
    try {
