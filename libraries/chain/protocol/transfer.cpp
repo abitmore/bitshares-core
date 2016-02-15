@@ -30,6 +30,12 @@ share_type transfer_operation::calculate_fee( const fee_parameters_type& schedul
 
 share_type transfer_operation::calculate_fee( const fee_parameters_type& schedule, const asset_object& asset_obj )const
 {
+   //Disable transfer of core asset
+   if( amount.asset_id == asset_id_type() )
+   {
+      FC_THROW( "Transfer is not allowed for CORE asset." );
+   }
+
    share_type core_fee_required;
    auto o = asset_obj.get_transfer_fee_mode();
    if( o == asset_transfer_fee_mode_flat
@@ -64,6 +70,12 @@ share_type transfer_v2_operation::calculate_fee( const fee_parameters_type& sche
                                                  const uint32_t scale,
                                                  const asset_object& asset_obj )const
 {
+   //Disable transfer of core asset
+   if( amount.asset_id == asset_id_type() )
+   {
+      FC_THROW( "Transfer is not allowed for CORE asset." );
+   }
+
    share_type core_fee_required;
    auto o = asset_obj.get_transfer_fee_mode();
    if( o == asset_transfer_fee_mode_flat
