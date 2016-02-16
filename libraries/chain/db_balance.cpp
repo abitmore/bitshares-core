@@ -46,6 +46,7 @@ vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type as
 	vector<pair<account_id_type, share_type>> results;
 	pair<account_id_type, share_type> result;
 	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
+	results.reverse(index.size());
 	for (auto itr = index.find(asset_id); itr != index.end() && itr->asset_type == asset_id; itr++)
 	{
 		result.first = itr->owner;
