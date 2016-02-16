@@ -40,6 +40,7 @@ add_library( graphene_chain
              protocol/fee_schedule.cpp
              protocol/confidential.cpp
              protocol/vote.cpp
+			 protocol/dividend_operation.cpp
 
              genesis_state.cpp
              get_config.cpp
@@ -67,7 +68,7 @@ add_library( graphene_chain
              vesting_balance_object.cpp
 
              block_database.cpp
-
+			 dividend_operation_evaluator.cpp
              ${HEADERS}
            )
 
