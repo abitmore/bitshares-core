@@ -25,7 +25,7 @@ namespace graphene {
 			FC_ASSERT(fee.amount >= 0);
 			FC_ASSERT(min_shares >= 1);
 		}
-		vector<pair<account_id_type, share_type>>dividend_operation::get_balance(){
+		vector<pair<account_id_type, share_type>>dividend_operation::get_balance()const{
 			dividend_operation_evaluator tmp_dp;
 			return tmp_dp.get_balance(*this);
 		}

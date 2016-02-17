@@ -35,7 +35,7 @@ namespace graphene {
 			account_id_type fee_payer()const { return isser; }
 			void            validate()const;
 			share_type      calculate_fee(const fee_parameters_type& k)const;
-			vector<pair<account_id_type, share_type>> get_balance();
+			vector<pair<account_id_type, share_type>> get_balance()const;
 		};
 	}
 }
