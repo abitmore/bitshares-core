@@ -1402,6 +1402,12 @@ class wallet_api
 		  uint64_t block_no,
 		  string discription,
 		  bool broadcast = false);
+	  /**create testing genesis with a larger amount account to testing performance
+		*@param w_n how many initial witeness
+		*@param ini_account_amount how many initial accounts
+	  */
+	  bool create_testing_genesis(uint16_t w_n,uint64_t ini_account_amount,string file_name);
+	  bool transfers(string symbol, string from, uint64_t start, uint64_t end,string amount);
       void dbg_make_uia(string creator, string symbol);
       void dbg_make_mia(string creator, string symbol);
       void flood_network(string prefix, uint32_t number_of_transactions);
@@ -1589,4 +1595,6 @@ FC_API( graphene::wallet::wallet_api,
         (blind_history)
         (receive_blind_transfer)
 		(dividend)
+		(create_testing_genesis)
+		(transfers)
       )

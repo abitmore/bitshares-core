@@ -4079,7 +4079,69 @@ vesting_balance_object_with_info::vesting_balance_object_with_info( const vestin
    allowed_withdraw = get_allowed_withdraw( now );
    allowed_withdraw_time = now;
 }
+bool wallet_api::create_testing_genesis(uint16_t w_n, uint64_t ini_account_amount,string file_name)
+{
+	try{
+		genesis_state_type newgenesis;
+		account_id_type _id;
+		optional<account_object> _account;
+		string account_name;
+		vector<asset> _account_balance;
+		genesis_state_type::initial_asset_type _ini_asset;
 
+		newgenesis.initial_parameters.current_fees = fee_schedule::get_default();
+		newgenesis.initial_timestamp = time_point_sec(time_point::now().sec_since_epoch() /
+			newgenesis.initial_parameters.block_interval *
+			newgenesis.initial_parameters.block_interval);
+		newgenesis.initial_parameters.block_interval = 10;
+		newgenesis.initial_active_witnesses = w_n;
+		auto init_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init")));
+		for (uint64_t i = 1; i < ini_account_amount; ++i)
+		{
+			auto name = "init" + fc::to_string(i);
+			newgenesis.initial_accounts.emplace_back(name,
+				init_key.get_public_key(),
+				init_key.get_public_key(),
+				true);
+			if (i <= w_n)
+			{
+				newgenesis.initial_committee_candidates.push_back({ name });
+				newgenesis.initial_witness_candidates.push_back({ name, init_key.get_public_key() });
+			}
+		}
+		auto k1_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("k1")));
+		newgenesis.initial_accounts.emplace_back("k1", k1_key.get_public_key(), k1_key.get_public_key(), true);
+		newgenesis.initial_balances.push_back({ k1_key.get_public_key(),
+			GRAPHENE_SYMBOL,
+			GRAPHENE_MAX_SHARE_SUPPLY });
+
+		fc::path out, key_out;
+		if (file_name!= "")
+		{
+			out = fc::path(fc::current_path().string() + "\\" + file_name + ".json");
+			//key_out = fc::path(fc::current_path().string() + "\\" + name + "-key.json");
+		}
+		else{
+			out = fc::path(fc::current_path().string() + "\\dev-genesis.json");
+			//key_out = fc::path(fc::current_path().string() + "\\dev-genesis-key.json");
+		}
+		fc::json::save_to_file(newgenesis, out);
+	}
+	catch (const fc::exception& e)
+	{
+		elog("I don`t konw ${e}", ("e", e.to_detail_string()));
+	}
+
+	return true;
+}
+bool wallet_api::transfers(string symbol, string from, uint64_t start, uint64_t end,string amount){
+	for (uint64_t i = start; i <= end; ++i)
+	{
+		auto name = "init" + fc::to_string(i);
+		my->transfer(from,name,amount,symbol,"",true);
+	}
+	return 1;
+}
 } } // graphene::wallet
 
 void fc::to_variant(const account_multi_index_type& accts, fc::variant& vo)
