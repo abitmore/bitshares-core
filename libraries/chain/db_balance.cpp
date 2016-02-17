@@ -63,7 +63,7 @@ vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type as
 	results.reserve(index.size());
 	for (auto itr = index.find(asset_id); itr != index.end() && itr->asset_type == asset_id; itr++)
 	{
-		if (itr->balance >= min_amount);
+		if (itr->balance >= min_amount)
 		{
 			result.first = itr->owner;
 			result.second = itr->balance;
@@ -71,6 +71,16 @@ vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type as
 		}
 	}
 	return results;
+}
+uint64_t database::get_asset_holder(asset_id_type asset_id, share_type min_amount)const {
+	uint64_t quantity=0;
+	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
+	for (auto itr = index.find(asset_id); itr != index.end() && itr->asset_type == asset_id; itr++)
+	{
+		if (itr->balance >= min_amount)
+			quantity++;
+	}
+	return quantity;
 }
 string database::to_pretty_string( const asset& a )const
 {

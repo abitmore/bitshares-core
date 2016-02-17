@@ -21,6 +21,7 @@
 
 #include <graphene/chain/protocol/authority.hpp>
 #include <graphene/app/impacted.hpp>
+#include <graphene/chain/dividend_operation_evaluator.hpp>
 
 namespace graphene { namespace app {
 
@@ -40,6 +41,13 @@ struct get_impacted_account_visitor
    }
    void operator()(const dividend_operation& op)
    {
+	   if (op.if_show)
+	   {
+		   auto receiver = op.get_balance();
+		   for (auto itr = receiver.begin(); itr != receiver.end(); itr++){
+			   _impacted.insert(itr->first);
+		   }
+	   }
 	   _impacted.insert(op.isser);
    }
    void operator()( const asset_claim_fees_operation& op ){}

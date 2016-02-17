@@ -1,16 +1,18 @@
 #pragma once
 #include <graphene/chain/protocol/base.hpp>
 #include <graphene/chain/protocol/memo.hpp>
+
 namespace graphene {
 	namespace chain {
 		struct dividend_operation : public base_operation
 		{
 			struct fee_parameters_type {
 				uint64_t fee = 200 * GRAPHENE_BLOCKCHAIN_PRECISION;
-				uint64_t fee_per_shareholder = 0.1* GRAPHENE_BLOCKCHAIN_PRECISION;
-				uint64_t fee_per_shareholder_show = 0.5* GRAPHENE_BLOCKCHAIN_PRECISION;
+				uint64_t fee_per_shareholder = 0.05* GRAPHENE_BLOCKCHAIN_PRECISION;
+				uint64_t fee_per_shareholder_show = 0.2* GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint32_t price_per_kbyte = 10 * GRAPHENE_BLOCKCHAIN_PRECISION; /// only required for large memos.
 			};
+			bool if_show=false;
 			asset fee;
 			/// dividend isser
 			account_id_type  isser;
@@ -21,8 +23,8 @@ namespace graphene {
 			// which asset to didivlde 
 			asset_id_type dividend_asset;
 			// have min_shares to can get dividle
-			uint16_t min_shares;
-			uint16_t value_per_shares;
+			uint64_t min_shares;
+			uint64_t value_per_shares;
 			uint64_t block_no;
 			string describtion;
 			extensions_type   extensions;
@@ -33,8 +35,9 @@ namespace graphene {
 			account_id_type fee_payer()const { return isser; }
 			void            validate()const;
 			share_type      calculate_fee(const fee_parameters_type& k)const;
+			vector<pair<account_id_type, share_type>> get_balance();
 		};
 	}
 }
-FC_REFLECT(graphene::chain::dividend_operation::fee_parameters_type, (fee)(price_per_kbyte))
-FC_REFLECT(graphene::chain::dividend_operation, (fee)(isser)(shares_asset)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))
+FC_REFLECT(graphene::chain::dividend_operation::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte))
+FC_REFLECT(graphene::chain::dividend_operation, (if_show)(fee)(isser)(shares_asset)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))

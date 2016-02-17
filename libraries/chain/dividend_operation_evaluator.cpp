@@ -7,7 +7,6 @@ void_result dividend_operation_evaluator::do_evaluate(const dividend_operation& 
 	{
 		try{
 				const database& d = db();
-
 				const account_object& from_account = op.isser(d);
 				const asset_id_type   share = op.shares_asset;
 				const asset_id_type   dividend = op.dividend_asset;
@@ -57,4 +56,12 @@ void_result dividend_operation_evaluator::do_apply(const dividend_operation& op)
 				
 		FC_CAPTURE_AND_RETHROW((op))
 	}
+uint64_t dividend_operation_evaluator::get_asset_holder(const dividend_operation& op){
+	const database& d = db();
+	return d.get_asset_holder(op.shares_asset, op.min_shares);
+}
+vector<pair<account_id_type, share_type>> dividend_operation_evaluator::get_balance(const dividend_operation& op){
+	const database& d = db();
+	return d.get_balance(op.shares_asset, op.min_shares);
+}
 }}

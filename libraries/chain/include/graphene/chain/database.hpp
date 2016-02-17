@@ -291,6 +291,10 @@ namespace graphene { namespace chain {
          asset get_balance(const account_object& owner, const asset_object& asset_obj)const;
 		 /// This is an overloaded method.
 		 vector<pair<account_id_type, share_type>> get_balance(asset_id_type asset_id)const;
+		 ///get the account and share that hold asset_id larger than min_amount
+		 vector<pair<account_id_type, share_type>> get_balance(asset_id_type asset_id,share_type min_amount)const;
+		 ///get the how many account that hold asset_id larger than min_amount
+		 uint64_t get_asset_holder(asset_id_type asset_id, share_type min_amount)const;
          /**
           * @brief Adjust a particular account's balance in a given asset by a delta
           * @param account ID of account whose balance should be adjusted

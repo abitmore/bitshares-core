@@ -34,7 +34,7 @@
 #include <graphene/chain/protocol/witness.hpp>
 #include <graphene/chain/protocol/worker.hpp>
 #include <graphene/chain/protocol/confidential.hpp>
-#include <graphene/chain/protocol/dividend_operation.hpp>
+#include <graphene/chain/dividend_operation.hpp>
 //#include <graphene/chain/margin_asset_object.hpp>
 namespace graphene { namespace chain {
 
