@@ -14,25 +14,21 @@ void_result dividend_operation_evaluator::do_evaluate(const dividend_operation& 
 				const asset_object&   asset_type_shares = op.shares_asset(d);
 				const asset_object&   fee_asset_type = op.fee.asset_id(d);
 				const asset_object&   asset_type_dividend = op.dividend_asset(d);
-				const uint16_t min_shares = op.min_shares;
+				const uint64_t min_shares = op.min_shares;
 				const uint16_t value_per_shares = op.value_per_shares;
 
 				FC_ASSERT(!asset_type_dividend.is_transfer_restricted());
 
-				auto accounts_shares = d.get_balance(share);
+				auto accounts_shares = d.get_balance(share, min_shares);
 				//calulate dividends
 				dividends = 0;
 				pair<account_id_type, asset> account_dividends;
 				for (auto itr = accounts_shares.begin(); itr != accounts_shares.end(); itr++)
 				{
-					if (itr->second >= min_shares)
-						
-					{
-						account_dividends.first = itr->first;
-						account_dividends.second.asset_id =dividend;
-						account_dividends.second .amount= share_type(itr->second / min_shares*value_per_shares);
-						accounts_dividends.push_back(account_dividends);
-					}
+					account_dividends.first = itr->first;
+					account_dividends.second.asset_id =dividend;
+					account_dividends.second .amount= share_type(itr->second / min_shares*value_per_shares);
+					accounts_dividends.push_back(account_dividends);
 					dividends = dividends +account_dividends.second.amount;
 
 				}

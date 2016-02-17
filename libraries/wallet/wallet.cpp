@@ -4096,20 +4096,22 @@ bool wallet_api::create_testing_genesis(uint16_t w_n, uint64_t ini_account_amoun
 		newgenesis.initial_parameters.block_interval = 10;
 		newgenesis.initial_active_witnesses = w_n;
 		auto init_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init")));
-		for (uint64_t i = 1; i < ini_account_amount; ++i)
+		std::cout << utilities::key_to_wif(init_key) << endl;
+		for (uint64_t i = 0; i < ini_account_amount; ++i)
 		{
 			auto name = "init" + fc::to_string(i);
 			newgenesis.initial_accounts.emplace_back(name,
 				init_key.get_public_key(),
 				init_key.get_public_key(),
 				true);
-			if (i <= w_n)
+			if (i < w_n)
 			{
 				newgenesis.initial_committee_candidates.push_back({ name });
 				newgenesis.initial_witness_candidates.push_back({ name, init_key.get_public_key() });
 			}
 		}
 		auto k1_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("k1")));
+		std::cout << utilities::key_to_wif(k1_key) << endl;
 		newgenesis.initial_accounts.emplace_back("k1", k1_key.get_public_key(), k1_key.get_public_key(), true);
 		newgenesis.initial_balances.push_back({ k1_key.get_public_key(),
 			GRAPHENE_SYMBOL,

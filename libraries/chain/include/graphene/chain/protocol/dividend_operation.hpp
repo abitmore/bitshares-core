@@ -7,6 +7,8 @@ namespace graphene {
 		{
 			struct fee_parameters_type {
 				uint64_t fee = 200 * GRAPHENE_BLOCKCHAIN_PRECISION;
+				uint64_t fee_per_shareholder = 0.1* GRAPHENE_BLOCKCHAIN_PRECISION;
+				uint64_t fee_per_shareholder_show = 0.5* GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint32_t price_per_kbyte = 10 * GRAPHENE_BLOCKCHAIN_PRECISION; /// only required for large memos.
 			};
 			asset fee;
