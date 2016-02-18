@@ -1393,14 +1393,16 @@ class wallet_api
 		 *@param value_per_shares.
 		 *@param block_no base on which block. 
 		 *@param discription discription about this dividend.
+		 *@param if show transation history in transation record of receiver
 		 */
 	  signed_transaction dividend(string issuer,
 		  string share_asset,
 		  string dividend_asset,
-		  uint16_t min_shares,
-		  uint16_t value_per_shares,
+		  string min_shares,
+		  string value_per_shares,
 		  uint64_t block_no,
 		  string discription,
+		  bool if_show,
 		  bool broadcast = false);
 	  /**create testing genesis with a larger amount account to testing performance
 		*@param w_n how many initial witeness

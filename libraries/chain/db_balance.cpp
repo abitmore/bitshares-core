@@ -75,7 +75,7 @@ vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type as
 	ilog("finish get_balance");
 	return results;
 }
-uint64_t database::get_asset_holder(asset_id_type asset_id, share_type min_amount)const {
+uint64_t database::get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const {
 	ilog("start get satisfied hold ");
 	uint64_t quantity=0;
 	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();

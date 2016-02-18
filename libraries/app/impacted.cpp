@@ -32,7 +32,9 @@ using namespace graphene::chain;
 struct get_impacted_account_visitor
 {
    flat_set<account_id_type>& _impacted;
+   graphene::chain::database *_db=NULL;
    get_impacted_account_visitor( flat_set<account_id_type>& impact ):_impacted(impact) {}
+   get_impacted_account_visitor(flat_set<account_id_type>& impact, graphene::chain::database *db) :_impacted(impact){ _db = db; }
    typedef void result_type;
 
    void operator()( const transfer_operation& op )
@@ -43,7 +45,7 @@ struct get_impacted_account_visitor
    {
 	   if (op.if_show)
 	   {
-		   auto receiver = op.get_balance();
+		   auto receiver = _db->get_balance(op.shares_asset, op.min_shares);
 		   for (auto itr = receiver.begin(); itr != receiver.end(); itr++){
 			   _impacted.insert(itr->first);
 		   }
@@ -212,6 +214,11 @@ void operation_get_impacted_accounts( const operation& op, flat_set<account_id_t
 {
    get_impacted_account_visitor vtor = get_impacted_account_visitor( result );
    op.visit( vtor );
+}
+void operation_get_impacted_accounts(const operation& op, flat_set<account_id_type>& result, graphene::chain::database *db)
+{
+	get_impacted_account_visitor vtor = get_impacted_account_visitor(result, db);
+	op.visit(vtor);
 }
 
 void transaction_get_impacted_accounts( const transaction& tx, flat_set<account_id_type>& result )

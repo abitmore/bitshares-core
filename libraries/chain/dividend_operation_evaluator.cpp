@@ -13,22 +13,27 @@ void_result dividend_operation_evaluator::do_evaluate(const dividend_operation& 
 				const asset_object&   asset_type_shares = op.shares_asset(d);
 				const asset_object&   fee_asset_type = op.fee.asset_id(d);
 				const asset_object&   asset_type_dividend = op.dividend_asset(d);
-				const uint64_t min_shares = op.min_shares;
-				const uint16_t value_per_shares = op.value_per_shares;
+				const share_type min_shares = op.min_shares;
+				const share_type value_per_shares = op.value_per_shares;
+				const uint64_t holder_amount = op.holder_amount;
+				
+				FC_ASSERT(!asset_type_dividend.is_transfer_restricted()
+					, "should restrict asset first");
 
-				FC_ASSERT(!asset_type_dividend.is_transfer_restricted());
-
-				auto accounts_shares = d.get_balance(share, min_shares);
+				auto accounts_shares = d.get_balance(share, op.min_shares);
+				//help to check if pay enough fee
+				FC_ASSERT(holder_amount == accounts_shares.size());
 				//calulate dividends
 				dividends = 0;
-				pair<account_id_type, asset> account_dividends;
+				pair<account_id_type, asset> _account_dividends;
+				accounts_dividends.reserve(accounts_shares.size());
 				for (auto itr = accounts_shares.begin(); itr != accounts_shares.end(); itr++)
 				{
-					account_dividends.first = itr->first;
-					account_dividends.second.asset_id =dividend;
-					account_dividends.second .amount= share_type(itr->second / min_shares*value_per_shares);
-					accounts_dividends.push_back(account_dividends);
-					dividends = dividends +account_dividends.second.amount;
+					_account_dividends.first = itr->first;
+					_account_dividends.second.asset_id = dividend;
+					_account_dividends.second.amount= share_type(itr->second / min_shares*value_per_shares);
+					accounts_dividends.push_back(_account_dividends);
+					dividends = dividends +_account_dividends.second.amount;
 
 				}
 				bool insufficient_balance = d.get_balance(from_account, asset_type_dividend).amount >= dividends;
@@ -58,7 +63,7 @@ void_result dividend_operation_evaluator::do_apply(const dividend_operation& op)
 	}
 uint64_t dividend_operation_evaluator::get_asset_holder(const dividend_operation& op){
 	const database& d = db();
-	return d.get_asset_holder(op.shares_asset, op.min_shares);
+	return d.get_satisfied_holder(op.shares_asset, op.min_shares);
 }
 vector<pair<account_id_type, share_type>> dividend_operation_evaluator::get_balance(const dividend_operation& op){
 	const database& d = db();

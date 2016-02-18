@@ -20,11 +20,13 @@ namespace graphene {
 			//map<account_id_type,share_type> to;
 			// which asset 
 			asset_id_type shares_asset;
+			//how many holder can get dividend
+			uint64_t holder_amount;
 			// which asset to didivlde 
 			asset_id_type dividend_asset;
 			// have min_shares to can get dividle
-			uint64_t min_shares;
-			uint64_t value_per_shares;
+			share_type min_shares;
+			share_type value_per_shares;
 			uint64_t block_no;
 			string describtion;
 			extensions_type   extensions;
@@ -40,4 +42,4 @@ namespace graphene {
 	}
 }
 FC_REFLECT(graphene::chain::dividend_operation::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte))
-FC_REFLECT(graphene::chain::dividend_operation, (if_show)(fee)(isser)(shares_asset)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))
+FC_REFLECT(graphene::chain::dividend_operation, (if_show)(fee)(isser)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))

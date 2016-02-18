@@ -239,6 +239,12 @@ class database_api
        * @brief Get the total number of accounts registered with the blockchain
        */
       uint64_t get_account_count()const;
+	  /**
+	   * @brief Get quantity of satisfied shareholder that have min amount of asset while dividend
+	   * @param asset_id id of asset
+	   * @param min_amount the satisfied holder should hold Min amount of this asset
+	   */
+	  uint64_t database_api::get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
 
       ////////////
       // Assets //
@@ -514,6 +520,7 @@ FC_API(graphene::app::database_api,
    (get_balance_objects)
    (get_vested_balances)
    (get_vesting_balances)
+   (get_satisfied_holder)
 
    // Assets
    (get_assets)
