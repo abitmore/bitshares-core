@@ -25,6 +25,7 @@
 #include <graphene/chain/asset_object.hpp>
 #include <graphene/chain/vesting_balance_object.hpp>
 #include <graphene/chain/witness_object.hpp>
+#include <fc/log/logger.hpp>
 
 namespace graphene { namespace chain {
 
@@ -57,6 +58,7 @@ vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type as
 }
 vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type asset_id, share_type min_amount)const
 {
+	ilog("start get_balance");
 	vector<pair<account_id_type, share_type>> results;
 	pair<account_id_type, share_type> result;
 	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
@@ -70,9 +72,11 @@ vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type as
 			results.push_back(result);
 		}
 	}
+	ilog("finish get_balance");
 	return results;
 }
 uint64_t database::get_asset_holder(asset_id_type asset_id, share_type min_amount)const {
+	ilog("start get satisfied hold ");
 	uint64_t quantity=0;
 	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
 	for (auto itr = index.find(asset_id); itr != index.end() && itr->asset_type == asset_id; itr++)
@@ -80,6 +84,7 @@ uint64_t database::get_asset_holder(asset_id_type asset_id, share_type min_amoun
 		if (itr->balance >= min_amount)
 			quantity++;
 	}
+	ilog("finish get satisfied hold ");
 	return quantity;
 }
 string database::to_pretty_string( const asset& a )const

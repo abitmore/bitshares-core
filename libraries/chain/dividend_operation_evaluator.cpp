@@ -42,19 +42,19 @@ void_result dividend_operation_evaluator::do_evaluate(const dividend_operation& 
 		FC_CAPTURE_AND_RETHROW((op))
 	}
 void_result dividend_operation_evaluator::do_apply(const dividend_operation& op)
+{try{
+	ilog("start dividend");
+	database& d = db();
+	db().adjust_balance(op.isser, -asset(dividends, op.dividend_asset));
+	for (auto itr = accounts_dividends.begin(); itr != accounts_dividends.end(); itr++)
 	{
-		try{
-				database& d = db();
-
-				db().adjust_balance(op.isser, -asset(dividends, op.dividend_asset));
-				for (auto itr = accounts_dividends.begin(); itr != accounts_dividends.end(); itr++)
-				{
-					d.adjust_balance(itr->first, itr->second);
-				}
-				return void_result();
-				}
-				
-		FC_CAPTURE_AND_RETHROW((op))
+		d.adjust_balance(itr->first, itr->second);
+	}
+	ilog("finish dividend");
+	return void_result();
+	}
+		
+	FC_CAPTURE_AND_RETHROW((op))
 	}
 uint64_t dividend_operation_evaluator::get_asset_holder(const dividend_operation& op){
 	const database& d = db();
