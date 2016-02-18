@@ -31,7 +31,8 @@ namespace graphene { namespace app {
 void operation_get_impacted_accounts(
    const graphene::chain::operation& op,
    fc::flat_set<graphene::chain::account_id_type>& result );
-//to get impacted_accounts need database for (one to more)operation
+//the impacted accounts are included in operation for (one to one) operation ,but for (one to more)operation like dividend, 
+//the impacted_accounts base on database,
 void operation_get_impacted_accounts(
 	const graphene::chain::operation& op,
 	fc::flat_set<graphene::chain::account_id_type>& result, graphene::chain::database *db);
