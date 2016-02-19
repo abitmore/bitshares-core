@@ -6,6 +6,11 @@ namespace graphene {
 		share_type dividend_operation::calculate_fee(const fee_parameters_type& schedule)const
 		{
 			FC_ASSERT(holder_amount > 0);
+			FC_ASSERT(holder_amount <= schedule.limited_shareholder,"amount of shareholder is out of limited");
+			if (!schedule.if_native)
+			{
+				FC_ASSERT(schedule.if_active, "this operation inactive");
+			}
 			share_type core_fee_required = schedule.fee;
 			if (if_show){
 				core_fee_required += holder_amount*schedule.fee_per_shareholder;

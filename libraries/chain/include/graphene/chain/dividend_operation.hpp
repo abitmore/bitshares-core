@@ -5,12 +5,15 @@
 namespace graphene {
 	namespace chain {
 		struct dividend_operation : public base_operation
-		{
+		{	
 			struct fee_parameters_type {
 				uint64_t fee = 200 * GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint64_t fee_per_shareholder = 0.05* GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint64_t fee_per_shareholder_show = 0.2* GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint32_t price_per_kbyte = 10 * GRAPHENE_BLOCKCHAIN_PRECISION; /// only required for large memos.
+				uint64_t limited_shareholder = 1000;// the limited shareholder quantity
+				bool if_native = false;
+				bool if_active = true;
 			};
 			bool if_show=false;
 			asset fee;
@@ -41,5 +44,5 @@ namespace graphene {
 		};
 	}
 }
-FC_REFLECT(graphene::chain::dividend_operation::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte))
+FC_REFLECT(graphene::chain::dividend_operation::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte)(if_native)(if_active))
 FC_REFLECT(graphene::chain::dividend_operation, (if_show)(fee)(isser)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))
