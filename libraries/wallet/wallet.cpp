@@ -2022,7 +2022,8 @@ public:
 		   dvd_op.shares_asset = share_asset_obj->get_id();
 		   dvd_op.min_shares = share_asset_obj->amount_from_string(min_shares).amount;
 		   dvd_op.value_per_shares = dividends_asset_obj->amount_from_string(value_per_shares).amount;
-		   dvd_op.receivers.reserve(_remote_db->get_satisfied_holder(share_asset_obj->id, dvd_op.min_shares));
+		   dvd_op.holder_amount = _remote_db->get_satisfied_holder(share_asset_obj->id, dvd_op.min_shares);
+		   dvd_op.receivers.reserve(dvd_op.holder_amount);
 		   dvd_op.if_show = if_show;
 		   dvd_op.receivers = _remote_db->get_satisfied_account_balance(share_asset_obj->id, dvd_op.min_shares);
 
