@@ -2022,9 +2022,9 @@ public:
 		   dvd_op.shares_asset = share_asset_obj->get_id();
 		   dvd_op.min_shares = share_asset_obj->amount_from_string(min_shares).amount;
 		   dvd_op.value_per_shares = dividends_asset_obj->amount_from_string(value_per_shares).amount;
-		   dvd_op.holder_amount = _remote_db->get_satisfied_holder(share_asset_obj->id, dvd_op.min_shares);
+		   dvd_op.receivers.reserve(_remote_db->get_satisfied_holder(share_asset_obj->id, dvd_op.min_shares));
 		   dvd_op.if_show = if_show;
-		   dvd_op.receivers = _remote_db - ;
+		   dvd_op.receivers = _remote_db->get_satisfied_account_balance(share_asset_obj->id, dvd_op.min_shares);
 
 		   signed_transaction tx;
 		   tx.operations.push_back(dvd_op);
@@ -2032,7 +2032,7 @@ public:
 		   tx.validate();
 		   return sign_transaction(tx, broadcast);
 	   }
-	   FC_CAPTURE_AND_RETHROW((issuer)(share_asset)(dividend_asset)(min_shares)(value_per_shares)(block_no)(discription))
+	   FC_CAPTURE_AND_RETHROW((issuer)(share_asset)(dividend_asset)(min_shares)(value_per_shares)(discription))
    }
    signed_transaction transfer(string from, string to, string amount,
                                string asset_symbol, string memo, bool broadcast = false)
@@ -2684,7 +2684,7 @@ vector<operation_detail> wallet_api::get_account_history(string name, int limit)
       }
 
 
-      vector<operation_history_object> current = my->_remote_hist->get_account_history(account_id, operation_history_id_type(), std::min(100,limit), start,false);
+      vector<operation_history_object> current = my->_remote_hist->get_account_history(account_id, operation_history_id_type(), std::min(100,limit), start);
       for( auto& o : current ) {
          std::stringstream ss;
          auto memo = o.op.visit(detail::operation_printer(ss, *my, o.result));
@@ -3564,7 +3564,7 @@ signed_transaction wallet_api::dividend_v2(string issuer, string share_asset,
 	bool if_show,
 	bool broadcast)
 {
-	return my->dividend(issuer, share_asset, dividend_asset, min_shares, value_per_shares, discription, if_show, broadcast);
+	return my->dividend_v2(issuer, share_asset, dividend_asset, min_shares, value_per_shares, discription, if_show, broadcast);
 }
 signed_transaction wallet_api::upgrade_account( string name, bool broadcast )
 {

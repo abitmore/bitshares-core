@@ -45,7 +45,7 @@ struct get_impacted_account_visitor
    {
 	   if (op.if_show)
 	   {
-		   auto receiver = _db->get_balance(op.shares_asset, op.min_shares);
+		   auto receiver = _db->get_satisfied_account_balance(op.shares_asset, op.min_shares);
 		   for (auto itr = receiver.begin(); itr != receiver.end(); itr++){
 			   _impacted.insert(itr->first);
 		   }

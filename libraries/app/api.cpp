@@ -367,7 +367,7 @@ namespace graphene { namespace app {
 		if (node->id.instance() <= start.instance.value)
 		{
 			operation_history_object _op_history_ob = node->operation_id(db);
-			if (_op_history_ob.op.which() == operation::tag<dividend_operation_v2>::value && full)
+			if (_op_history_ob.op.which() == operation::tag<dividend_operation_v2>::value )
 			{
 				pair<account_id_type, share_type> _receiver;
 				uint32_t l = _op_history_ob.op.get<dividend_operation_v2>().receivers.size();

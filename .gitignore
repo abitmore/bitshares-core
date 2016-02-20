@@ -31,7 +31,7 @@ wallet.json
 witness_node_data_dir
 
 *.wallet
-
+dev.json
 programs/witness_node/object_database/*
 
 object_database/*
