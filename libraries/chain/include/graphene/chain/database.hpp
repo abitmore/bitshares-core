@@ -292,7 +292,7 @@ namespace graphene { namespace chain {
 		 /// This is an overloaded method.
 		 vector<pair<account_id_type, share_type>> get_balance(asset_id_type asset_id)const;
 		 ///get the account and share that hold asset_id larger than min_amount
-		 vector<pair<account_id_type, share_type>> get_balance(asset_id_type asset_id,share_type min_amount)const;
+		 vector<pair<account_id_type, share_type>> get_balance(asset_id_type asset_id, share_type min_amount)const;
 		 ///get the how many account that hold asset_id larger than min_amount
 		 uint64_t get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
          /**

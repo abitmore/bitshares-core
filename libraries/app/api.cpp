@@ -351,27 +351,47 @@ namespace graphene { namespace app {
        return result;
     }
 
-    vector<operation_history_object> history_api::get_account_history(account_id_type account, operation_history_id_type stop, unsigned limit, operation_history_id_type start) const
-    {
-       FC_ASSERT(_app.chain_database());
-       const auto& db = *_app.chain_database();
-       FC_ASSERT(limit <= 100);
-       vector<operation_history_object> result;
-       const auto& stats = account(db).statistics(db);
-       if(stats.most_recent_op == account_transaction_history_id_type()) return result;
-       const account_transaction_history_object* node = &stats.most_recent_op(db);
-       if(start == operation_history_id_type())
-          start = node->id;
-       while(node && node->operation_id.instance.value > stop.instance.value && result.size() < limit)
-       {
-          if(node->id.instance() <= start.instance.value)
-             result.push_back(node->operation_id(db));
-          if(node->next == account_transaction_history_id_type())
-             node = nullptr;
-          else node = db.find(node->next);
-       }
-       return result;
-    }
+ vector<operation_history_object> history_api::get_account_history(account_id_type account, operation_history_id_type stop, unsigned limit, operation_history_id_type start) const
+{
+	FC_ASSERT(_app.chain_database());
+	const auto& db = *_app.chain_database();
+	FC_ASSERT(limit <= 100);
+	vector<operation_history_object> result;
+	const auto& stats = account(db).statistics(db);
+	if (stats.most_recent_op == account_transaction_history_id_type()) return result;
+	const account_transaction_history_object* node = &stats.most_recent_op(db);
+	if (start == operation_history_id_type())
+		start = node->id;
+	while (node && node->operation_id.instance.value > stop.instance.value && result.size() < limit)
+	{
+		if (node->id.instance() <= start.instance.value)
+		{
+			operation_history_object _op_history_ob = node->operation_id(db);
+			if (_op_history_ob.op.which() == operation::tag<dividend_operation_v2>::value && full)
+			{
+				pair<account_id_type, share_type> _receiver;
+				uint32_t l = _op_history_ob.op.get<dividend_operation_v2>().receivers.size();
+				for (uint32_t i = 0; i < l; i++)
+				{
+					if (_op_history_ob.op.get<dividend_operation_v2>().receivers[i].first == account)
+					{
+						_receiver.second = _op_history_ob.op.get<dividend_operation_v2>().receivers[i].second;
+						_receiver.first = account;
+						break;
+					}
+				}
+				_op_history_ob.op.get<dividend_operation_v2>().receivers.clear();
+				_op_history_ob.op.get<dividend_operation_v2>().receivers.push_back(_receiver);
+				result.push_back(_op_history_ob);
+			 }
+			result.push_back(node->operation_id(db));
+		}		
+		if (node->next == account_transaction_history_id_type())
+			node = nullptr;
+		else node = db.find(node->next);
+	}
+	return result;
+ }
 
     flat_set<uint32_t> history_api::get_market_history_buckets()const
     {

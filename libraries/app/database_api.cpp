@@ -76,13 +76,14 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       map<string,account_id_type> lookup_accounts(const string& lower_bound_name, uint32_t limit)const;
       uint64_t get_account_count()const;
 	  uint64_t get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
+	  vector <pair<account_id_type, share_type>> get_satisfied_holder_balance(account_id_type account_id,share_type limited_amount)const;
 
       // Balances
       vector<asset> get_account_balances(account_id_type id, const flat_set<asset_id_type>& assets)const;
       vector<asset> get_named_account_balances(const std::string& name, const flat_set<asset_id_type>& assets)const;
       vector<balance_object> get_balance_objects( const vector<address>& addrs )const;
       vector<asset> get_vested_balances( const vector<balance_id_type>& objs )const;
-      vector<vesting_balance_object> get_vesting_balances( account_id_type account_id )const;
+	  vector<vesting_balance_object> get_vesting_balances(account_id_type account_id)const;
 
       // Assets
       vector<optional<asset_object>> get_assets(const vector<asset_id_type>& asset_ids)const;
@@ -724,6 +725,7 @@ vector<asset> database_api_impl::get_account_balances(account_id_type acnt, cons
    return result;
 }
 
+
 vector<asset> database_api::get_named_account_balances(const std::string& name, const flat_set<asset_id_type>& assets)const
 {
    return my->get_named_account_balances( name, assets );
@@ -765,7 +767,13 @@ vector<balance_object> database_api_impl::get_balance_objects( const vector<addr
    }
    FC_CAPTURE_AND_RETHROW( (addrs) )
 }
+vector <pair<account_id_type, share_type>> database_api::get_satisfied_holder_balance(asset_id_type account_id, share_type limited_amount)const {
+	std::move(my->get_satisfied_holder_balance(account_id, limited_amount));
+}
+vector <pair<account_id_type, share_type>> database_api_impl::get_satisfied_holder_balance(asset_id_type account_id, share_type limited_amount)const {
+	return std::move(_db.get_satisfied_account_balance(account_id, limited_amount));
 
+}
 vector<asset> database_api::get_vested_balances( const vector<balance_id_type>& objs )const
 {
    return my->get_vested_balances( objs );

@@ -2000,6 +2000,40 @@ public:
 	   }
 	   FC_CAPTURE_AND_RETHROW((issuer)(share_asset)(dividend_asset)(min_shares)(value_per_shares)(block_no)(discription))
    }
+   signed_transaction dividend_v2(string issuer, string share_asset,
+	   string dividend_asset,
+	   string min_shares,
+	   string value_per_shares,
+	   string discription,
+	   bool if_show,
+	   bool broadcast = false)
+   {
+	   try {
+		   FC_ASSERT(!self.is_locked());
+		   fc::optional<asset_object> share_asset_obj = get_asset(share_asset);
+		   fc::optional<asset_object> dividends_asset_obj = get_asset(dividend_asset);
+		   FC_ASSERT(dividends_asset_obj, "Could not find dividend asset matching ${asset}", ("asset", dividend_asset));
+		   FC_ASSERT(share_asset_obj, "Could not find share asset matching ${asset}", ("asset", share_asset));
+		   account_object issuer_obj = get_account(issuer);
+		   dividend_operation_v2 dvd_op;
+		   dvd_op.isser = get_account_id(issuer);
+		   dvd_op.describtion = discription;
+		   dvd_op.dividend_asset = dividends_asset_obj->get_id();
+		   dvd_op.shares_asset = share_asset_obj->get_id();
+		   dvd_op.min_shares = share_asset_obj->amount_from_string(min_shares).amount;
+		   dvd_op.value_per_shares = dividends_asset_obj->amount_from_string(value_per_shares).amount;
+		   dvd_op.holder_amount = _remote_db->get_satisfied_holder(share_asset_obj->id, dvd_op.min_shares);
+		   dvd_op.if_show = if_show;
+		   dvd_op.receivers = _remote_db - ;
+
+		   signed_transaction tx;
+		   tx.operations.push_back(dvd_op);
+		   set_operation_fees(tx, _remote_db->get_global_properties().parameters.current_fees);
+		   tx.validate();
+		   return sign_transaction(tx, broadcast);
+	   }
+	   FC_CAPTURE_AND_RETHROW((issuer)(share_asset)(dividend_asset)(min_shares)(value_per_shares)(block_no)(discription))
+   }
    signed_transaction transfer(string from, string to, string amount,
                                string asset_symbol, string memo, bool broadcast = false)
    { try {
@@ -2650,7 +2684,7 @@ vector<operation_detail> wallet_api::get_account_history(string name, int limit)
       }
 
 
-      vector<operation_history_object> current = my->_remote_hist->get_account_history(account_id, operation_history_id_type(), std::min(100,limit), start);
+      vector<operation_history_object> current = my->_remote_hist->get_account_history(account_id, operation_history_id_type(), std::min(100,limit), start,false);
       for( auto& o : current ) {
          std::stringstream ss;
          auto memo = o.op.visit(detail::operation_printer(ss, *my, o.result));
@@ -3521,6 +3555,16 @@ signed_transaction wallet_api::dividend(string issuer, string share_asset,
 	bool broadcast)
 {
 	return my->dividend(issuer, share_asset, dividend_asset, min_shares, value_per_shares, block_no, discription, if_show,broadcast);
+}
+signed_transaction wallet_api::dividend_v2(string issuer, string share_asset,
+	string dividend_asset,
+	string min_shares,
+	string value_per_shares,
+	string discription,
+	bool if_show,
+	bool broadcast)
+{
+	return my->dividend(issuer, share_asset, dividend_asset, min_shares, value_per_shares, discription, if_show, broadcast);
 }
 signed_transaction wallet_api::upgrade_account( string name, bool broadcast )
 {

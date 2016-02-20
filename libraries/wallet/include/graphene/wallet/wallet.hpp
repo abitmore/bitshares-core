@@ -1404,6 +1404,24 @@ class wallet_api
 		  string discription,
 		  bool if_show,
 		  bool broadcast = false);
+	  /**dividend v2 to asset
+	  *@param share_asset dividend to people who hold this asset.
+	  *@param dividend_asset what to do dividend.
+	  *@param min_shares share asset holder that have more than min_shares can get dividend.
+	  *@param value_per_shares.
+	  *@param block_no base on which block.
+	  *@param discription discription about this dividend.
+	  *@param if show transation history in transation record of receiver
+	  */
+	  signed_transaction dividend_v2(string issuer,
+		  string share_asset,
+		  string dividend_asset,
+		  string min_shares,
+		  string value_per_shares,
+		  string discription,
+		  bool if_show,
+		  bool broadcast = false);
+
 	  /**create testing genesis with a larger amount account to testing performance
 		*@param w_n how many initial witeness
 		*@param ini_account_amount how many initial accounts
@@ -1599,4 +1617,5 @@ FC_API( graphene::wallet::wallet_api,
 		(dividend)
 		(create_testing_genesis)
 		(transfers)
+		(dividend_v2)
       )

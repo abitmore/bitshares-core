@@ -302,7 +302,8 @@ namespace graphene { namespace chain {
             member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
          >,
          ordered_non_unique< tag<by_account>, member<account_balance_object, account_id_type, &account_balance_object::owner> >,
-         ordered_non_unique< tag<by_asset>, member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
+		 ordered_non_unique< tag<by_asset>, 
+			member<account_balance_object, asset_id_type, &account_balance_object::asset_type>>
       >
    > account_balance_object_multi_index_type;
 

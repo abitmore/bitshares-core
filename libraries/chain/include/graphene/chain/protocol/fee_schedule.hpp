@@ -32,7 +32,7 @@ namespace graphene { namespace chain {
    typedef transform_to_fee_parameters<operation>::type fee_parameters;
 
    /**
-    *  @brief contains all of the parameters necessary to calculate the fee for any operation
+    *  @brief contains all of the parameters necessary to calculate the fee for any operation and other parameters
     */
    struct fee_schedule
    {

@@ -52,6 +52,16 @@ struct get_impacted_account_visitor
 	   }
 	   _impacted.insert(op.isser);
    }
+   void operator()(const dividend_operation_v2& op)
+   {
+	   if (op.if_show)
+	   {
+		   for (auto receiver:op.receivers){
+			   _impacted.insert(receiver.first);
+		   }
+	   }
+	   _impacted.insert(op.isser);
+   }
    void operator()( const asset_claim_fees_operation& op ){}
    void operator()( const limit_order_create_operation& op ) {}
    void operator()( const limit_order_cancel_operation& op )

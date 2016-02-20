@@ -54,9 +54,9 @@ vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type as
 		result.second = itr->balance;
 		results.push_back(result);
 	}
-	return results;
+	return std::move(results);
 }
-vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type asset_id, share_type min_amount)const
+vector<pair<account_id_type, share_type>> database::get_satisfied_account_balance(asset_id_type asset_id, share_type min_amount)const
 {
 	ilog("start get_balance");
 	vector<pair<account_id_type, share_type>> results;
@@ -73,7 +73,7 @@ vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type as
 		}
 	}
 	ilog("finish get_balance");
-	return results;
+	return std::move(results);
 }
 uint64_t database::get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const {
 	ilog("start get satisfied hold ");
