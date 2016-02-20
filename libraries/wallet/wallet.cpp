@@ -2026,6 +2026,11 @@ public:
 		   dvd_op.receivers.reserve(dvd_op.holder_amount);
 		   dvd_op.if_show = if_show;
 		   dvd_op.receivers = _remote_db->get_satisfied_account_balance(share_asset_obj->id, dvd_op.min_shares);
+		   uint32_t len = dvd_op.receivers.size();
+		   for (uint32_t i = 0; i < len; i++)
+		   {
+			   dvd_op.receivers[i].second = share_type(dvd_op.receivers[i].second / dvd_op.min_shares*dvd_op.value_per_shares);
+		   }
 
 		   signed_transaction tx;
 		   tx.operations.push_back(dvd_op);

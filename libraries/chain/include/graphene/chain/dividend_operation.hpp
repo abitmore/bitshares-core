@@ -49,7 +49,7 @@ namespace graphene {
 				uint64_t fee_per_shareholder = 0.05* GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint64_t fee_per_shareholder_show = 0.2* GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint32_t price_per_kbyte = 10 * GRAPHENE_BLOCKCHAIN_PRECISION; /// only required for large memos.
-				uint64_t limited_shareholder = 1000;// the limited shareholder quantity
+				uint64_t limited_shareholder = 5000;// the limited shareholder quantity
 				bool if_native = false;
 				bool if_active = true;
 			};

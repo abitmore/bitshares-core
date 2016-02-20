@@ -19,7 +19,7 @@ namespace graphene {
 			uint64_t get_asset_holder(const dividend_operation& op);
 			vector<pair<account_id_type, share_type>> get_balance(const dividend_operation& op);
 		};
-		class dividend_operation_v2_evaluator : public evaluator < dividend_operation_evaluator >
+		class dividend_operation_v2_evaluator : public evaluator < dividend_operation_v2_evaluator >
 		{
 		public:
 			typedef dividend_operation_v2 operation_type;
