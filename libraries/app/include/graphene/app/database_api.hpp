@@ -245,6 +245,7 @@ class database_api
 	   * @param min_amount the satisfied holder should hold Min amount of this asset
 	   */
 	  uint64_t database_api::get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
+	  vector <pair<account_id_type, share_type>> get_satisfied_account_balance(asset_id_type asset_id, share_type limited_amount)const;
 
       ////////////
       // Assets //
@@ -521,6 +522,7 @@ FC_API(graphene::app::database_api,
    (get_vested_balances)
    (get_vesting_balances)
    (get_satisfied_holder)
+   (get_satisfied_account_balance)
 
    // Assets
    (get_assets)

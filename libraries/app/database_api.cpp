@@ -76,7 +76,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       map<string,account_id_type> lookup_accounts(const string& lower_bound_name, uint32_t limit)const;
       uint64_t get_account_count()const;
 	  uint64_t get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
-	  vector <pair<account_id_type, share_type>> get_satisfied_holder_balance(account_id_type account_id,share_type limited_amount)const;
+	  vector <pair<account_id_type, share_type>> get_satisfied_account_balance(asset_id_type asset_id,share_type limited_amount)const;
 
       // Balances
       vector<asset> get_account_balances(account_id_type id, const flat_set<asset_id_type>& assets)const;
@@ -767,11 +767,11 @@ vector<balance_object> database_api_impl::get_balance_objects( const vector<addr
    }
    FC_CAPTURE_AND_RETHROW( (addrs) )
 }
-vector <pair<account_id_type, share_type>> database_api::get_satisfied_holder_balance(asset_id_type account_id, share_type limited_amount)const {
-	std::move(my->get_satisfied_holder_balance(account_id, limited_amount));
+vector <pair<account_id_type, share_type>> database_api::get_satisfied_account_balance(asset_id_type asset_id, share_type limited_amount)const {
+	return std::move(my->get_satisfied_account_balance(asset_id, limited_amount));
 }
-vector <pair<account_id_type, share_type>> database_api_impl::get_satisfied_holder_balance(asset_id_type account_id, share_type limited_amount)const {
-	return std::move(_db.get_satisfied_account_balance(account_id, limited_amount));
+vector <pair<account_id_type, share_type>> database_api_impl::get_satisfied_account_balance(asset_id_type asset_id, share_type limited_amount)const {
+	return std::move(_db.get_satisfied_account_balance(asset_id, limited_amount));
 
 }
 vector<asset> database_api::get_vested_balances( const vector<balance_id_type>& objs )const

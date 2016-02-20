@@ -20,7 +20,7 @@ void_result dividend_operation_evaluator::do_evaluate(const dividend_operation& 
 				FC_ASSERT(!asset_type_dividend.is_transfer_restricted()
 					, "should restrict asset first");
 
-				auto accounts_shares = d.get_balance(share, op.min_shares);
+				auto accounts_shares = d.get_satisfied_account_balance(share, op.min_shares);
 				//help to check if pay enough fee
 				FC_ASSERT(holder_amount == accounts_shares.size());
 				//calulate dividends
@@ -67,7 +67,7 @@ uint64_t dividend_operation_evaluator::get_asset_holder(const dividend_operation
 }
 vector<pair<account_id_type, share_type>> dividend_operation_evaluator::get_balance(const dividend_operation& op){
 	const database& d = db();
-	return d.get_balance(op.shares_asset, op.min_shares);
+	return std::move(d.get_satisfied_account_balance(op.shares_asset, op.min_shares));
 }
 void_result dividend_operation_v2_evaluator::do_evaluate(const dividend_operation_v2& op)
 	{
