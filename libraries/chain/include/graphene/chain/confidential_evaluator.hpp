@@ -1,63 +1,34 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 #pragma once
 #include <graphene/chain/evaluator.hpp>
-#include <graphene/db/object.hpp>
-#include <graphene/db/generic_index.hpp>
 
 namespace graphene { namespace chain {
 
-/**
- * @class blinded_balance_object
- * @brief tracks a blinded balance commitment
- * @ingroup object
- * @ingroup protocol
- */
-class blinded_balance_object : public graphene::db::abstract_object<blinded_balance_object>
-{
-   public:
-      static const uint8_t space_id = implementation_ids;
-      static const uint8_t type_id  = impl_blinded_balance_object_type;
-
-      fc::ecc::commitment_type                commitment;
-      asset_id_type                           asset_id;
-      authority                               owner;
-};
-
-struct by_asset;
-struct by_owner;
-struct by_commitment;
-
-/**
- * @ingroup object_index
- */
-typedef multi_index_container<
-   blinded_balance_object,
-   indexed_by<
-      ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag<by_commitment>, member<blinded_balance_object, commitment_type, &blinded_balance_object::commitment> >
-   >
-> blinded_balance_object_multi_index_type;
-typedef generic_index<blinded_balance_object, blinded_balance_object_multi_index_type> blinded_balance_index;
-
+struct transfer_to_blind_operation;
+struct transfer_from_blind_operation;
+struct blind_transfer_operation;
 
 class transfer_to_blind_evaluator : public evaluator<transfer_to_blind_evaluator>
 {
@@ -66,6 +37,8 @@ class transfer_to_blind_evaluator : public evaluator<transfer_to_blind_evaluator
 
       void_result do_evaluate( const transfer_to_blind_operation& o );
       void_result do_apply( const transfer_to_blind_operation& o ) ;
+
+      virtual void pay_fee() override;
 };
 
 class transfer_from_blind_evaluator : public evaluator<transfer_from_blind_evaluator>
@@ -75,6 +48,8 @@ class transfer_from_blind_evaluator : public evaluator<transfer_from_blind_evalu
 
       void_result do_evaluate( const transfer_from_blind_operation& o );
       void_result do_apply( const transfer_from_blind_operation& o ) ;
+
+      virtual void pay_fee() override;
 };
 
 class blind_transfer_evaluator : public evaluator<blind_transfer_evaluator>
@@ -84,8 +59,8 @@ class blind_transfer_evaluator : public evaluator<blind_transfer_evaluator>
 
       void_result do_evaluate( const blind_transfer_operation& o );
       void_result do_apply( const blind_transfer_operation& o ) ;
+
+      virtual void pay_fee() override;
 };
 
 } } // namespace graphene::chain
-
-FC_REFLECT_DERIVED( graphene::chain::blinded_balance_object, (graphene::db::object), (commitment)(asset_id)(owner) )

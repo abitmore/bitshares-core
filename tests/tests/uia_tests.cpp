@@ -1,22 +1,25 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 #include <boost/test/unit_test.hpp>
@@ -24,6 +27,7 @@
 #include <graphene/chain/database.hpp>
 #include <graphene/chain/exceptions.hpp>
 #include <graphene/chain/hardfork.hpp>
+#include <graphene/chain/is_authorized_asset.hpp>
 
 #include <graphene/chain/account_object.hpp>
 #include <graphene/chain/asset_object.hpp>
@@ -50,7 +54,7 @@ BOOST_AUTO_TEST_CASE( create_advanced_uia )
       creator.common_options.market_fee_percent = GRAPHENE_MAX_MARKET_FEE_PERCENT/100; /*1%*/
       creator.common_options.issuer_permissions = charge_market_fee|white_list|override_authority|transfer_restricted|disable_confidential;
       creator.common_options.flags = charge_market_fee|white_list|override_authority|disable_confidential;
-      creator.common_options.core_exchange_rate = price({asset(2),asset(1,1)});
+      creator.common_options.core_exchange_rate = price({asset(2),asset(1,asset_id_type(1))});
       creator.common_options.whitelist_authorities = creator.common_options.blacklist_authorities = {account_id_type()};
       trx.operations.push_back(std::move(creator));
       PUSH_TX( db, trx, ~0 );
@@ -158,7 +162,7 @@ BOOST_AUTO_TEST_CASE( issue_whitelist_uia )
       }
       PUSH_TX( db, trx, ~0 );
 
-      BOOST_CHECK(nathan_id(db).is_authorized_asset(uia_id(db), db));
+      BOOST_CHECK(is_authorized_asset( db, nathan_id(db), uia_id(db) ));
       BOOST_CHECK_EQUAL(get_balance(nathan_id, uia_id), 1000);
 
       // Make a whitelist, now it should fail
@@ -262,7 +266,7 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
       wop.account_to_list = nathan.id;
       trx.operations.back() = wop;
       PUSH_TX( db, trx, ~0 );
-      BOOST_CHECK( !(nathan.is_authorized_asset(advanced, db)) );
+      BOOST_CHECK( !(is_authorized_asset( db, nathan, advanced )) );
 
       BOOST_TEST_MESSAGE( "Attempting to transfer from nathan after blacklisting, should fail" );
       op.amount = advanced.amount(50);
@@ -320,7 +324,7 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
 
       trx.operations.back() = op;
       //Fail because nathan is blacklisted
-      BOOST_CHECK(!nathan.is_authorized_asset(advanced, db));
+      BOOST_CHECK(!is_authorized_asset( db, nathan, advanced ));
       GRAPHENE_REQUIRE_THROW(PUSH_TX( db, trx, ~0 ), fc::exception);
 
       //Remove nathan from committee's whitelist, add him to dan's. This should not authorize him to hold ADVANCED.
@@ -337,7 +341,7 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
 
       trx.operations.back() = op;
       //Fail because nathan is not whitelisted
-      BOOST_CHECK(!nathan.is_authorized_asset(advanced, db));
+      BOOST_CHECK(!is_authorized_asset( db, nathan, advanced ));
       GRAPHENE_REQUIRE_THROW(PUSH_TX( db, trx, ~0 ), fc::exception);
 
       burn.payer = dan.id;

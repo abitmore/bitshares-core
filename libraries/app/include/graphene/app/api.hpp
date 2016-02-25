@@ -1,28 +1,32 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 #pragma once
 
 #include <graphene/app/database_api.hpp>
 
 #include <graphene/chain/protocol/types.hpp>
+#include <graphene/chain/protocol/confidential.hpp>
 
 #include <graphene/market_history/market_history_plugin.hpp>
 
@@ -30,6 +34,7 @@
 
 #include <fc/api.hpp>
 #include <fc/optional.hpp>
+#include <fc/crypto/elliptic.hpp>
 #include <fc/network/ip.hpp>
 
 #include <boost/container/flat_set.hpp>
@@ -42,10 +47,27 @@
 namespace graphene { namespace app {
    using namespace graphene::chain;
    using namespace graphene::market_history;
+   using namespace fc::ecc;
    using namespace std;
 
    class application;
 
+   struct verify_range_result
+   {
+      bool        success;
+      uint64_t    min_val;
+      uint64_t    max_val;
+   };
+   
+   struct verify_range_proof_rewind_result
+   {
+      bool                          success;
+      uint64_t                      min_val;
+      uint64_t                      max_val;
+      uint64_t                      value_out;
+      fc::ecc::blind_factor_type    blind_out;
+      string                        message_out;
+   };
 
    /**
     * @brief The history_api class implements the RPC API for account history
@@ -173,6 +195,44 @@ namespace graphene { namespace app {
       private:
          application& _app;
    };
+   
+   class crypto_api
+   {
+      public:
+         crypto_api();
+         
+         fc::ecc::blind_signature blind_sign( const extended_private_key_type& key, const fc::ecc::blinded_hash& hash, int i );
+         
+         signature_type unblind_signature( const extended_private_key_type& key,
+                                              const extended_public_key_type& bob,
+                                              const fc::ecc::blind_signature& sig,
+                                              const fc::sha256& hash,
+                                              int i );
+                                                                  
+         fc::ecc::commitment_type blind( const fc::ecc::blind_factor_type& blind, uint64_t value );
+         
+         fc::ecc::blind_factor_type blind_sum( const std::vector<blind_factor_type>& blinds_in, uint32_t non_neg );
+         
+         bool verify_sum( const std::vector<commitment_type>& commits_in, const std::vector<commitment_type>& neg_commits_in, int64_t excess );
+         
+         verify_range_result verify_range( const fc::ecc::commitment_type& commit, const std::vector<char>& proof );
+         
+         std::vector<char> range_proof_sign( uint64_t min_value, 
+                                             const commitment_type& commit, 
+                                             const blind_factor_type& commit_blind, 
+                                             const blind_factor_type& nonce,
+                                             int8_t base10_exp,
+                                             uint8_t min_bits,
+                                             uint64_t actual_value );
+                                       
+         
+         verify_range_proof_rewind_result verify_range_proof_rewind( const blind_factor_type& nonce,
+                                                                     const fc::ecc::commitment_type& commit, 
+                                                                     const std::vector<char>& proof );
+         
+                                         
+         range_proof_info range_get_info( const std::vector<char>& proof );
+   };
 
    /**
     * @brief The login_api class implements the bottom layer of the RPC API
@@ -203,6 +263,8 @@ namespace graphene { namespace app {
          fc::api<history_api> history()const;
          /// @brief Retrieve the network node API
          fc::api<network_node_api> network_node()const;
+         /// @brief Retrieve the cryptography API
+         fc::api<crypto_api> crypto()const;
 
       private:
          /// @brief Called to enable an API, not reflected.
@@ -213,12 +275,19 @@ namespace graphene { namespace app {
          optional< fc::api<network_broadcast_api> > _network_broadcast_api;
          optional< fc::api<network_node_api> > _network_node_api;
          optional< fc::api<history_api> >  _history_api;
+         optional< fc::api<crypto_api> > _crypto_api;
    };
 
 }}  // graphene::app
 
 FC_REFLECT( graphene::app::network_broadcast_api::transaction_confirmation,
         (id)(block_num)(trx_num)(trx) )
+FC_REFLECT( graphene::app::verify_range_result,
+        (success)(min_val)(max_val) )
+FC_REFLECT( graphene::app::verify_range_proof_rewind_result,
+        (success)(min_val)(max_val)(value_out)(blind_out)(message_out) )
+//FC_REFLECT_TYPENAME( fc::ecc::compact_signature );
+//FC_REFLECT_TYPENAME( fc::ecc::commitment_type );
 
 FC_API(graphene::app::history_api,
        (get_account_history)
@@ -239,10 +308,22 @@ FC_API(graphene::app::network_node_api,
        (get_advanced_node_parameters)
        (set_advanced_node_parameters)
      )
+FC_API(graphene::app::crypto_api,
+       (blind_sign)
+       (unblind_signature)
+       (blind)
+       (blind_sum)
+       (verify_sum)
+       (verify_range)
+       (range_proof_sign)
+       (verify_range_proof_rewind)
+       (range_get_info)
+     )
 FC_API(graphene::app::login_api,
        (login)
        (network_broadcast)
        (database)
        (history)
        (network_node)
+       (crypto)
      )

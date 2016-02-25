@@ -1,27 +1,33 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 #include <graphene/chain/exceptions.hpp>
 #include <graphene/chain/protocol/confidential.hpp>
 #include <graphene/chain/confidential_evaluator.hpp>
+#include <graphene/chain/confidential_object.hpp>
 #include <graphene/chain/database.hpp>
+#include <graphene/chain/fba_accumulator_id.hpp>
+#include <graphene/chain/hardfork.hpp>
 
 namespace graphene { namespace chain {
 
@@ -63,6 +69,13 @@ void_result transfer_to_blind_evaluator::do_apply( const transfer_to_blind_opera
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
+void transfer_to_blind_evaluator::pay_fee()
+{
+   if( db().head_block_time() >= HARDFORK_563_TIME )
+      pay_fba_fee( fba_accumulator_id_transfer_to_blind );
+   else
+      generic_evaluator::pay_fee();
+}
 
 void_result transfer_from_blind_evaluator::do_evaluate( const transfer_from_blind_operation& o )
 { try {
@@ -100,9 +113,13 @@ void_result transfer_from_blind_evaluator::do_apply( const transfer_from_blind_o
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
-
-
-
+void transfer_from_blind_evaluator::pay_fee()
+{
+   if( db().head_block_time() >= HARDFORK_563_TIME )
+      pay_fba_fee( fba_accumulator_id_transfer_from_blind );
+   else
+      generic_evaluator::pay_fee();
+}
 
 void_result blind_transfer_evaluator::do_evaluate( const blind_transfer_operation& o )
 { try {
@@ -153,5 +170,12 @@ void_result blind_transfer_evaluator::do_apply( const blind_transfer_operation& 
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
+void blind_transfer_evaluator::pay_fee()
+{
+   if( db().head_block_time() >= HARDFORK_563_TIME )
+      pay_fba_fee( fba_accumulator_id_blind_transfer );
+   else
+      generic_evaluator::pay_fee();
+}
 
 } } // graphene::chain

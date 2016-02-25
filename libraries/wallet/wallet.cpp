@@ -1,22 +1,25 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 #include <algorithm>
 #include <cctype>
@@ -862,9 +865,10 @@ public:
 
       return _builder_transactions[transaction_handle] = sign_transaction(_builder_transactions[transaction_handle], broadcast);
    }
-   signed_transaction propose_builder_transaction(transaction_handle_type handle,
-                                                  time_point_sec expiration = time_point::now() + fc::minutes(1),
-                                                  uint32_t review_period_seconds = 0, bool broadcast = true)
+   signed_transaction propose_builder_transaction(
+      transaction_handle_type handle,
+      time_point_sec expiration = time_point::now() + fc::minutes(1),
+      uint32_t review_period_seconds = 0, bool broadcast = true)
    {
       FC_ASSERT(_builder_transactions.count(handle));
       proposal_create_operation op;
@@ -879,6 +883,28 @@ public:
 
       return trx = sign_transaction(trx, broadcast);
    }
+
+   signed_transaction propose_builder_transaction2(
+      transaction_handle_type handle,
+      string account_name_or_id,
+      time_point_sec expiration = time_point::now() + fc::minutes(1),
+      uint32_t review_period_seconds = 0, bool broadcast = true)
+   {
+      FC_ASSERT(_builder_transactions.count(handle));
+      proposal_create_operation op;
+      op.fee_paying_account = get_account(account_name_or_id).get_id();
+      op.expiration_time = expiration;
+      signed_transaction& trx = _builder_transactions[handle];
+      std::transform(trx.operations.begin(), trx.operations.end(), std::back_inserter(op.proposed_ops),
+                     [](const operation& op) -> op_wrapper { return op; });
+      if( review_period_seconds )
+         op.review_period_seconds = review_period_seconds;
+      trx.operations = {op};
+      _remote_db->get_global_properties().parameters.current_fees->set_fee( trx.operations.front() );
+
+      return trx = sign_transaction(trx, broadcast);
+   }
+
    void remove_builder_transaction(transaction_handle_type handle)
    {
       _builder_transactions.erase(handle);
@@ -1959,8 +1985,8 @@ public:
          limit_order_cancel_operation op;
          op.fee_paying_account = get_object<limit_order_object>(order_id).seller;
          op.order = order_id;
-         set_operation_fees( trx, _remote_db->get_global_properties().parameters.current_fees);
          trx.operations = {op};
+         set_operation_fees( trx, _remote_db->get_global_properties().parameters.current_fees);
 
          trx.validate();
          return sign_transaction(trx, broadcast);
@@ -2298,7 +2324,7 @@ public:
       asset_options opts;
       opts.flags &= ~(white_list | disable_force_settle | global_settle);
       opts.issuer_permissions = opts.flags;
-      opts.core_exchange_rate = price(asset(1), asset(1,1));
+      opts.core_exchange_rate = price(asset(1), asset(1,asset_id_type(1)));
       create_asset(get_account(creator).name, symbol, 2, opts, {}, true);
    }
 
@@ -2307,7 +2333,7 @@ public:
       asset_options opts;
       opts.flags &= ~white_list;
       opts.issuer_permissions = opts.flags;
-      opts.core_exchange_rate = price(asset(1), asset(1,1));
+      opts.core_exchange_rate = price(asset(1), asset(1,asset_id_type(1)));
       bitasset_options bopts;
       create_asset(get_account(creator).name, symbol, 2, opts, bopts, true);
    }
@@ -2495,12 +2521,18 @@ string operation_printer::operator()(const transfer_operation& op) const
          out << " -- Unlock wallet to see memo.";
       } else {
          try {
-            FC_ASSERT(wallet._keys.count(op.memo->to), "Memo is encrypted to a key ${k} not in this wallet.",
-                      ("k", op.memo->to));
-            auto my_key = wif_to_key(wallet._keys.at(op.memo->to));
-            FC_ASSERT(my_key, "Unable to recover private key to decrypt memo. Wallet may be corrupted.");
-            memo = op.memo->get_message(*my_key, op.memo->from);
-            out << " -- Memo: " << memo;
+            FC_ASSERT(wallet._keys.count(op.memo->to) || wallet._keys.count(op.memo->from), "Memo is encrypted to a key ${to} or ${from} not in this wallet.", ("to", op.memo->to)("from",op.memo->from));
+            if( wallet._keys.count(op.memo->to) ) {
+               auto my_key = wif_to_key(wallet._keys.at(op.memo->to));
+               FC_ASSERT(my_key, "Unable to recover private key to decrypt memo. Wallet may be corrupted.");
+               memo = op.memo->get_message(*my_key, op.memo->from);
+               out << " -- Memo: " << memo;
+            } else {
+               auto my_key = wif_to_key(wallet._keys.at(op.memo->from));
+               FC_ASSERT(my_key, "Unable to recover private key to decrypt memo. Wallet may be corrupted.");
+               memo = op.memo->get_message(*my_key, op.memo->to);
+               out << " -- Memo: " << memo;
+            }
          } catch (const fc::exception& e) {
             out << " -- could not decrypt memo";
             elog("Error when decrypting memo: ${e}", ("e", e.to_detail_string()));
@@ -2726,9 +2758,23 @@ signed_transaction wallet_api::sign_builder_transaction(transaction_handle_type 
    return my->sign_builder_transaction(transaction_handle, broadcast);
 }
 
-signed_transaction wallet_api::propose_builder_transaction(transaction_handle_type handle, time_point_sec expiration, uint32_t review_period_seconds, bool broadcast)
+signed_transaction wallet_api::propose_builder_transaction(
+   transaction_handle_type handle,
+   time_point_sec expiration,
+   uint32_t review_period_seconds,
+   bool broadcast)
 {
    return my->propose_builder_transaction(handle, expiration, review_period_seconds, broadcast);
+}
+
+signed_transaction wallet_api::propose_builder_transaction2(
+   transaction_handle_type handle,
+   string account_name_or_id,
+   time_point_sec expiration,
+   uint32_t review_period_seconds,
+   bool broadcast)
+{
+   return my->propose_builder_transaction2(handle, account_name_or_id, expiration, review_period_seconds, broadcast);
 }
 
 void wallet_api::remove_builder_transaction(transaction_handle_type handle)
@@ -3406,7 +3452,17 @@ vector< signed_transaction > wallet_api_impl::import_balance( string name_or_id,
       {
          optional< private_key_type > key = wif_to_key( wif_key );
          FC_ASSERT( key.valid(), "Invalid private key" );
-         addrs.push_back( key->get_public_key() );
+         fc::ecc::public_key pk = key->get_public_key();
+         addrs.push_back( pk );
+         keys[addrs.back()] = *key;
+         // see chain/balance_evaluator.cpp
+         addrs.push_back( pts_address( pk, false, 56 ) );
+         keys[addrs.back()] = *key;
+         addrs.push_back( pts_address( pk, true, 56 ) );
+         keys[addrs.back()] = *key;
+         addrs.push_back( pts_address( pk, false, 0 ) );
+         keys[addrs.back()] = *key;
+         addrs.push_back( pts_address( pk, true, 0 ) );
          keys[addrs.back()] = *key;
       }
    }
@@ -3594,8 +3650,8 @@ vector<asset>   wallet_api::get_blind_balances( string key_or_label )
 
    auto pub_key = get_public_key( key_or_label );
    auto& to_asset_used_idx = my->_wallet.blind_receipts.get<by_to_asset_used>();
-   auto start = to_asset_used_idx.lower_bound( std::make_tuple(pub_key,0,false)  );
-   auto end = to_asset_used_idx.lower_bound( std::make_tuple(pub_key,uint32_t(0xffffffff),true)  );
+   auto start = to_asset_used_idx.lower_bound( std::make_tuple(pub_key,asset_id_type(0),false)  );
+   auto end = to_asset_used_idx.lower_bound( std::make_tuple(pub_key,asset_id_type(uint32_t(0xffffffff)),true)  );
    while( start != end )
    {
       if( !start->used  )
@@ -3639,7 +3695,7 @@ blind_confirmation wallet_api::transfer_from_blind( string from_blind_account_ke
 
    auto conf = blind_transfer_help( from_blind_account_key_or_label,
                                from_blind_account_key_or_label, 
-                               blind_in, symbol, false, true );
+                               blind_in, symbol, false, true/*to_temp*/ );
    FC_ASSERT( conf.outputs.size() > 0 );
 
    auto to_account = my->get_account( to_account_id_or_name );
@@ -3653,6 +3709,24 @@ blind_confirmation wallet_api::transfer_from_blind( string from_blind_account_ke
    conf.trx.operations.push_back(from_blind);
    ilog( "about to validate" );
    conf.trx.validate();
+   
+   if( broadcast && conf.outputs.size() == 2 ) {
+       
+       // Save the change
+       blind_confirmation::output conf_output;
+       blind_confirmation::output change_output = conf.outputs[0];
+       
+       // The wallet must have a private key for confirmation.to, this is used to decrypt the memo
+       public_key_type from_key = get_public_key(from_blind_account_key_or_label);
+       conf_output.confirmation.to = from_key;
+       conf_output.confirmation.one_time_key = change_output.confirmation.one_time_key;
+       conf_output.confirmation.encrypted_memo = change_output.confirmation.encrypted_memo;
+       conf_output.confirmation_receipt = conf_output.confirmation;
+       //try { 
+       receive_blind_transfer( conf_output.confirmation_receipt, from_blind_account_key_or_label, "@"+to_account.name );
+       //} catch ( ... ){}
+   }
+   
    ilog( "about to broadcast" );
    conf.trx = sign_transaction( conf.trx, broadcast );
 
@@ -3949,7 +4023,6 @@ blind_receipt wallet_api::receive_blind_transfer( string confirmation_receipt, s
    auto plain_memo = fc::aes_decrypt( secret, conf.encrypted_memo );
    auto memo = fc::raw::unpack<stealth_confirmation::memo_data>( plain_memo );
 
-
    result.to_key   = *conf.to;
    result.to_label = get_key_label( result.to_key );
    if( memo.from ) 
@@ -3973,9 +4046,6 @@ blind_receipt wallet_api::receive_blind_transfer( string confirmation_receipt, s
    auto commtiment_test = fc::ecc::blind( memo.blinding_factor, memo.amount.amount.value );
    FC_ASSERT( fc::ecc::verify_sum( {commtiment_test}, {memo.commitment}, 0 ) );
    
-   auto bbal = my->_remote_db->get_blinded_balances( {memo.commitment} );
-   FC_ASSERT( bbal.size(), "commitment not found in blockchain", ("memo",memo) );
-
    blind_balance bal;
    bal.amount = memo.amount;
    bal.to     = *conf.to;
@@ -3985,21 +4055,20 @@ blind_receipt wallet_api::receive_blind_transfer( string confirmation_receipt, s
    bal.commitment = memo.commitment;
    bal.used = false;
 
-   result.control_authority = bbal.front().owner;
+   auto child_pubkey = child_priv_key.get_public_key();
+   auto owner = authority(1, public_key_type(child_pubkey), 1);
+   result.control_authority = owner;
    result.data = memo;
 
-
-   auto child_key_itr = bbal.front().owner.key_auths.find( child_priv_key.get_public_key() );
-
-   if( child_key_itr != bbal.front().owner.key_auths.end() )
+   auto child_key_itr = owner.key_auths.find( child_pubkey );
+   if( child_key_itr != owner.key_auths.end() )
       my->_keys[child_key_itr->first] = key_to_wif( child_priv_key );
-
-
+   
    // my->_wallet.blinded_balances[memo.amount.asset_id][bal.to].push_back( bal );
 
    result.date = fc::time_point::now();
    my->_wallet.blind_receipts.insert( result );
-   my->_keys[child_priv_key.get_public_key()] = key_to_wif( child_priv_key );
+   my->_keys[child_pubkey] = key_to_wif( child_priv_key );
 
    save_wallet_file();
 

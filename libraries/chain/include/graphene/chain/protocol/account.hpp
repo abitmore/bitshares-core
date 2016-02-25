@@ -1,34 +1,41 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 #pragma once
 #include <graphene/chain/protocol/base.hpp>
+#include <graphene/chain/protocol/buyback.hpp>
+#include <graphene/chain/protocol/ext.hpp>
+#include <graphene/chain/protocol/special_authority.hpp>
+#include <graphene/chain/protocol/types.hpp>
 #include <graphene/chain/protocol/vote.hpp>
 
-namespace graphene { namespace chain { 
+namespace graphene { namespace chain {
 
    bool is_valid_name( const string& s );
    bool is_cheap_name( const string& n );
 
    /// These are the fields which can be updated by the active authority.
-   struct account_options 
+   struct account_options
    {
       /// The memo key is the key this account will typically use to encrypt/sign transaction memos and other non-
       /// validated account activities. This field is here to prevent confusion if the active authority has zero or
@@ -58,7 +65,16 @@ namespace graphene { namespace chain {
     */
    struct account_create_operation : public base_operation
    {
-      struct fee_parameters_type { 
+      struct ext
+      {
+         optional< void_t >            null_ext;
+         optional< special_authority > owner_special_authority;
+         optional< special_authority > active_special_authority;
+         optional< buyback_account_options > buyback_options;
+      };
+
+      struct fee_parameters_type
+      {
          uint64_t basic_fee      = 5*GRAPHENE_BLOCKCHAIN_PRECISION; ///< the cost to register the cheapest non-free account
          uint64_t premium_fee    = 2000*GRAPHENE_BLOCKCHAIN_PRECISION; ///< the cost to register the cheapest non-free account
          uint32_t price_per_kbyte = GRAPHENE_BLOCKCHAIN_PRECISION;
@@ -79,11 +95,19 @@ namespace graphene { namespace chain {
       authority       active;
 
       account_options options;
-      extensions_type extensions;
+      extension< ext > extensions;
 
       account_id_type fee_payer()const { return registrar; }
       void            validate()const;
       share_type      calculate_fee(const fee_parameters_type& )const;
+
+      void get_required_active_authorities( flat_set<account_id_type>& a )const
+      {
+         // registrar should be required anyway as it is the fee_payer(), but we insert it here just to be sure
+         a.insert( registrar );
+         if( extensions.value.buyback_options.valid() )
+            a.insert( extensions.value.buyback_options->asset_to_buy_issuer );
+      }
    };
 
    /**
@@ -95,8 +119,16 @@ namespace graphene { namespace chain {
     */
    struct account_update_operation : public base_operation
    {
-      struct fee_parameters_type { 
-         share_type fee             = 20 * GRAPHENE_BLOCKCHAIN_PRECISION; 
+      struct ext
+      {
+         optional< void_t >            null_ext;
+         optional< special_authority > owner_special_authority;
+         optional< special_authority > active_special_authority;
+      };
+
+      struct fee_parameters_type
+      {
+         share_type fee             = 20 * GRAPHENE_BLOCKCHAIN_PRECISION;
          uint32_t   price_per_kbyte = GRAPHENE_BLOCKCHAIN_PRECISION;
       };
 
@@ -106,22 +138,25 @@ namespace graphene { namespace chain {
 
       /// New owner authority. If set, this operation requires owner authority to execute.
       optional<authority> owner;
-      /// New active authority. If set, this operation requires owner authority to execute.
+      /// New active authority. This can be updated by the current active authority.
       optional<authority> active;
 
       /// New account options
       optional<account_options> new_options;
-      extensions_type extensions;
+      extension< ext > extensions;
 
       account_id_type fee_payer()const { return account; }
       void       validate()const;
       share_type calculate_fee( const fee_parameters_type& k )const;
 
+      bool is_owner_update()const
+      { return owner || extensions.value.owner_special_authority.valid(); }
+
       void get_required_owner_authorities( flat_set<account_id_type>& a )const
-      { if( owner ) a.insert( account ); }
+      { if( is_owner_update() ) a.insert( account ); }
 
       void get_required_active_authorities( flat_set<account_id_type>& a )const
-      { if( !owner ) a.insert( account ); }
+      { if( !is_owner_update() ) a.insert( account ); }
    };
 
    /**
@@ -233,16 +268,19 @@ FC_REFLECT_TYPENAME( graphene::chain::account_whitelist_operation::account_listi
 FC_REFLECT_ENUM( graphene::chain::account_whitelist_operation::account_listing,
                 (no_listing)(white_listed)(black_listed)(white_and_black_listed))
 
+FC_REFLECT(graphene::chain::account_create_operation::ext, (null_ext)(owner_special_authority)(active_special_authority)(buyback_options) )
 FC_REFLECT( graphene::chain::account_create_operation,
             (fee)(registrar)
             (referrer)(referrer_percent)
             (name)(owner)(active)(options)(extensions)
           )
+
+FC_REFLECT(graphene::chain::account_update_operation::ext, (null_ext)(owner_special_authority)(active_special_authority) )
 FC_REFLECT( graphene::chain::account_update_operation,
             (fee)(account)(owner)(active)(new_options)(extensions)
           )
 
-FC_REFLECT( graphene::chain::account_upgrade_operation, 
+FC_REFLECT( graphene::chain::account_upgrade_operation,
             (fee)(account_to_upgrade)(upgrade_to_lifetime_member)(extensions) )
 
 FC_REFLECT( graphene::chain::account_whitelist_operation, (fee)(authorizing_account)(account_to_list)(new_listing)(extensions))

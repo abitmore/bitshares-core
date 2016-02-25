@@ -1,22 +1,25 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 #include <graphene/chain/database.hpp>
@@ -31,6 +34,7 @@
 #include <graphene/chain/witness_object.hpp>
 #include <graphene/chain/protocol/fee_schedule.hpp>
 #include <graphene/chain/exceptions.hpp>
+#include <graphene/chain/evaluator.hpp>
 
 namespace graphene { namespace chain {
 
@@ -293,14 +297,14 @@ signed_block database::generate_block(
    const fc::ecc::private_key& block_signing_private_key,
    uint32_t skip /* = 0 */
    )
-{
+{ try {
    signed_block result;
    detail::with_skip_flags( *this, skip, [&]()
    {
       result = _generate_block( when, witness_id, block_signing_private_key );
    } );
    return result;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 signed_block database::_generate_block(
    fc::time_point_sec when,
@@ -414,9 +418,10 @@ void database::pop_block()
    auto head_id = head_block_id();
    optional<signed_block> head_block = fetch_block_by_id( head_id );
    GRAPHENE_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
-   pop_undo();
-   _block_id_to_block.remove( head_id );
+
    _fork_db.pop_block();
+   _block_id_to_block.remove( head_id );
+   pop_undo();
 
    _popped_tx.insert( _popped_tx.begin(), head_block->transactions.begin(), head_block->transactions.end() );
 
@@ -568,7 +573,7 @@ processed_transaction database::_apply_transaction(const signed_transaction& trx
 { try {
    uint32_t skip = get_node_properties().skip_flags;
 
-   if( !(skip&skip_validate) )
+   if( true || !(skip&skip_validate) )   /* issue #505 explains why this skip_flag is disabled */
       trx.validate();
 
    auto& trx_idx = get_mutable_index_type<transaction_index>();
@@ -628,8 +633,8 @@ processed_transaction database::_apply_transaction(const signed_transaction& trx
    ptrx.operation_results = std::move(eval_state.operation_results);
 
    //Make sure the temp account has no non-zero balances
-   const auto& index = get_index_type<account_balance_index>().indices().get<by_account>();
-   auto range = index.equal_range(GRAPHENE_TEMP_ACCOUNT);
+   const auto& index = get_index_type<account_balance_index>().indices().get<by_account_asset>();
+   auto range = index.equal_range( boost::make_tuple( GRAPHENE_TEMP_ACCOUNT ) );
    std::for_each(range.first, range.second, [](const account_balance_object& b) { FC_ASSERT(b.balance == 0); });
 
    return ptrx;
@@ -650,7 +655,7 @@ operation_result database::apply_operation(transaction_evaluation_state& eval_st
    auto result = eval->evaluate( eval_state, op, true );
    set_applied_operation_result( op_id, result );
    return result;
-} FC_CAPTURE_AND_RETHROW(  ) }
+} FC_CAPTURE_AND_RETHROW( (op) ) }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
 {

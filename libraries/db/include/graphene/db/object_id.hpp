@@ -1,22 +1,25 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 #pragma once
 #include <fc/exception/exception.hpp>
@@ -48,27 +51,23 @@ namespace graphene { namespace db {
       uint16_t space_type()const { return number >> 48;              }
       uint64_t instance()const { return number & GRAPHENE_DB_MAX_INSTANCE_ID; }
       bool     is_null()const { return number == 0; }
-      operator uint64_t()const { return number; }
+      explicit operator uint64_t()const { return number; }
 
-      friend bool  operator == ( const object_id_type& a, const object_id_type& b )
-      {
-         return a.number == b.number;
-      }
+      friend bool  operator == ( const object_id_type& a, const object_id_type& b ) { return a.number == b.number; }
+      friend bool  operator != ( const object_id_type& a, const object_id_type& b ) { return a.number != b.number; }
+      friend bool  operator < ( const object_id_type& a, const object_id_type& b ) { return a.number < b.number; }
+      friend bool  operator > ( const object_id_type& a, const object_id_type& b ) { return a.number > b.number; }
+
       object_id_type& operator++(int) { ++number; return *this; }
       object_id_type& operator++()    { ++number; return *this; }
 
-      friend object_id_type operator+(const object_id_type& a, int delta ) { 
+      friend object_id_type operator+(const object_id_type& a, int delta ) {
          return object_id_type( a.space(), a.type(), a.instance() + delta );
       }
-      friend object_id_type operator+(const object_id_type& a, int64_t delta ) { 
+      friend object_id_type operator+(const object_id_type& a, int64_t delta ) {
          return object_id_type( a.space(), a.type(), a.instance() + delta );
       }
       friend size_t hash_value( object_id_type v ) { return std::hash<uint64_t>()(v.number); }
-
-      friend bool  operator < ( const object_id_type& a, const object_id_type& b )
-      {
-         return a.number < b.number;
-      }
 
       template< typename T >
       bool is() const
@@ -103,7 +102,7 @@ namespace graphene { namespace db {
 
       object_id(){}
       object_id( unsigned_int i ):instance(i){}
-      object_id( uint64_t i ):instance(i)
+      explicit object_id( uint64_t i ):instance(i)
       {
          FC_ASSERT( (i >> 48) == 0 );
       }
@@ -115,27 +114,21 @@ namespace graphene { namespace db {
       friend object_id operator+(const object_id a, int delta ) { return object_id( uint64_t(a.instance.value+delta) ); }
 
       operator object_id_type()const { return object_id_type( SpaceID, TypeID, instance.value ); }
-      operator uint64_t()const { return object_id_type( *this ).number; }
+      explicit operator uint64_t()const { return object_id_type( *this ).number; }
 
       template<typename DB>
       const T& operator()(const DB& db)const { return db.get(*this); }
 
-      friend bool  operator == ( const object_id& a, const object_id& b )
-      {
-         return a.instance == b.instance;
-      }
-      friend bool  operator == ( const object_id_type& a, const object_id& b )
-      {
-         return a == object_id_type(b);
-      }
-      friend bool  operator == ( const object_id& b, const object_id_type& a )
-      {
-         return a == object_id_type(b);
-      }
-      friend bool  operator < ( const object_id& a, const object_id& b )
-      {
-         return a.instance.value < b.instance.value;
-      }
+      friend bool  operator == ( const object_id& a, const object_id& b ) { return a.instance == b.instance; }
+      friend bool  operator != ( const object_id& a, const object_id& b ) { return a.instance != b.instance; }
+      friend bool  operator == ( const object_id_type& a, const object_id& b ) { return a == object_id_type(b); }
+      friend bool  operator != ( const object_id_type& a, const object_id& b ) { return a != object_id_type(b); }
+      friend bool  operator == ( const object_id& b, const object_id_type& a ) { return a == object_id_type(b); }
+      friend bool  operator != ( const object_id& b, const object_id_type& a ) { return a != object_id_type(b); }
+
+      friend bool  operator < ( const object_id& a, const object_id& b ) { return a.instance.value < b.instance.value; }
+      friend bool  operator > ( const object_id& a, const object_id& b ) { return a.instance.value > b.instance.value; }
+
       friend size_t hash_value( object_id v ) { return std::hash<uint64_t>()(v.instance.value); }
 
       unsigned_int instance;

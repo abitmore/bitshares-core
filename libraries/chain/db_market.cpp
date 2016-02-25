@@ -1,22 +1,25 @@
 /*
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * The MIT License
  *
- * 1. Any modified source or binaries are used only with the BitShares network.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * 2. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * 3. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 #include <graphene/chain/database.hpp>
@@ -24,7 +27,7 @@
 #include <graphene/chain/account_object.hpp>
 #include <graphene/chain/asset_object.hpp>
 #include <graphene/chain/hardfork.hpp>
-#include <graphene/chain/market_evaluator.hpp>
+#include <graphene/chain/market_object.hpp>
 
 #include <fc/uint128.hpp>
 
@@ -129,6 +132,27 @@ void database::cancel_order( const limit_order_object& order, bool create_virtua
    remove(order);
 }
 
+bool maybe_cull_small_order( database& db, const limit_order_object& order )
+{
+   /**
+    *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
+    *  have hit the limit where the seller is asking for nothing in return.  When this
+    *  happens we must refund any balance back to the seller, it is too small to be
+    *  sold at the sale price.
+    *
+    *  If the order is a taker order (as opposed to a maker order), so the price is
+    *  set by the counterparty, this check is deferred until the order becomes unmatched
+    *  (see #555) -- however, detecting this condition is the responsibility of the caller.
+    */
+   if( order.amount_to_receive().amount == 0 )
+   {
+      ilog( "applied epsilon logic" );
+      db.cancel_order(order);
+      return true;
+   }
+   return false;
+}
+
 bool database::apply_order(const limit_order_object& new_order_object, bool allow_black_swan)
 {
    auto order_id = new_order_object.id;
@@ -168,7 +192,15 @@ bool database::apply_order(const limit_order_object& new_order_object, bool allo
    check_call_orders(sell_asset, allow_black_swan);
    check_call_orders(receive_asset, allow_black_swan);
 
-   return find_object(order_id) == nullptr;
+   const limit_order_object* updated_order_object = find< limit_order_object >( order_id );
+   if( updated_order_object == nullptr )
+      return true;
+   if( head_block_time() <= HARDFORK_555_TIME )
+      return false;
+   // before #555 we would have done maybe_cull_small_order() logic as a result of fill_order() being called by match() above
+   // however after #555 we need to get rid of small orders -- #555 hardfork defers logic that was done too eagerly before, and
+   // this is the point it's deferred to.
+   return maybe_cull_small_order( *this, *updated_order_object );
 }
 
 /**
@@ -215,8 +247,8 @@ int database::match( const limit_order_object& usd, const OrderType& core, const
            core_pays == core.amount_for_sale() );
 
    int result = 0;
-   result |= fill_order( usd, usd_pays, usd_receives );
-   result |= fill_order( core, core_pays, core_receives ) << 1;
+   result |= fill_order( usd, usd_pays, usd_receives, false );
+   result |= fill_order( core, core_pays, core_receives, true ) << 1;
    assert( result != 0 );
    return result;
 }
@@ -260,8 +292,10 @@ asset database::match( const call_order_object& call,
    return call_receives;
 } FC_CAPTURE_AND_RETHROW( (call)(settle)(match_price)(max_settlement) ) }
 
-bool database::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
+bool database::fill_order( const limit_order_object& order, const asset& pays, const asset& receives, bool cull_if_small )
 { try {
+   cull_if_small |= (head_block_time() < HARDFORK_555_TIME);
+
    FC_ASSERT( order.amount_for_sale().asset_id == pays.asset_id );
    FC_ASSERT( pays.asset_id != receives.asset_id );
 
@@ -294,17 +328,8 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
                              b.for_sale -= pays.amount;
                              b.deferred_fee = 0;
                           });
-      /**
-       *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
-       *  have hit the limit where the seller is asking for nothing in return.  When this
-       *  happens we must refund any balance back to the seller, it is too small to be
-       *  sold at the sale price.
-       */
-      if( order.amount_to_receive().amount == 0 )
-      {
-         cancel_order(order);
-         return true;
-      }
+      if( cull_if_small )
+         return maybe_cull_small_order( *this, order );
       return false;
    }
 } FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }
@@ -514,7 +539,7 @@ bool database::check_call_orders(const asset_object& mia, bool enable_black_swan
        fill_order(*old_call_itr, call_pays, call_receives);
 
        auto old_limit_itr = filled_limit ? limit_itr++ : limit_itr;
-       fill_order(*old_limit_itr, order_pays, order_receives);
+       fill_order(*old_limit_itr, order_pays, order_receives, true);
 
     } // whlie call_itr != call_end
 
