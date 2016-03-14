@@ -160,8 +160,8 @@ void database::initialize_evaluators()
    register_evaluator<transfer_from_blind_evaluator>();
    register_evaluator<blind_transfer_evaluator>();
    register_evaluator<asset_claim_fees_evaluator>();
+   register_evaluator<dividend_hidden_operation_evaluator>();
    register_evaluator<dividend_operation_evaluator>();
-   register_evaluator<dividend_operation_v2_evaluator>();
 }
 
 void database::initialize_indexes()

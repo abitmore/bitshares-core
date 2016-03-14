@@ -18,7 +18,7 @@ namespace graphene {
 			bool if_show=false;
 			asset fee;
 			/// dividend isser
-			account_id_type  isser;
+			account_id_type  issuer;
 			/// The sharea records
 			//map<account_id_type,share_type> to;
 			// which asset 
@@ -34,10 +34,10 @@ namespace graphene {
 			string describtion;
 			extensions_type   extensions;
 			/*dividend_hidden_operation(account_id_type _isser, asset_id_type _shares_asset, asset_id_type _dividend_asset, uint16_t _min_shares, uint16_t _value_per_shares, uint64_t _block_no) :
-				isser(_isser), shares_asset(_shares_asset), dividend_asset(_dividend_asset), min_shares(_min_shares), value_per_shares(_value_per_shares), block_no(_block_no){};*/
+				issuer(_isser), shares_asset(_shares_asset), dividend_asset(_dividend_asset), min_shares(_min_shares), value_per_shares(_value_per_shares), block_no(_block_no){};*/
 			void get_to();
 
-			account_id_type fee_payer()const { return isser; }
+			account_id_type fee_payer()const { return issuer; }
 			void            validate()const;
 			share_type      calculate_fee(const fee_parameters_type& k)const;
 			vector<pair<account_id_type, share_type>> get_balance()const;
@@ -55,8 +55,8 @@ namespace graphene {
 			};
 			bool if_show = false;
 			asset fee;
-			/// dividend isser
-			account_id_type  isser;
+			/// dividend issuer
+			account_id_type  issuer;
 			/// The sharea records
 			//map<account_id_type,share_type> to;
 			// which asset 
@@ -72,10 +72,10 @@ namespace graphene {
 			string describtion;
 			extensions_type   extensions;
 			/*dividend_hidden_operation(account_id_type _isser, asset_id_type _shares_asset, asset_id_type _dividend_asset, uint16_t _min_shares, uint16_t _value_per_shares, uint64_t _block_no) :
-			isser(_isser), shares_asset(_shares_asset), dividend_asset(_dividend_asset), min_shares(_min_shares), value_per_shares(_value_per_shares), block_no(_block_no){};*/
+			issuer(_isser), shares_asset(_shares_asset), dividend_asset(_dividend_asset), min_shares(_min_shares), value_per_shares(_value_per_shares), block_no(_block_no){};*/
 			void get_to();
 
-			account_id_type fee_payer()const { return isser; }
+			account_id_type fee_payer()const { return issuer; }
 			void            validate()const;
 			share_type      calculate_fee(const fee_parameters_type& k)const;
 			vector<pair<account_id_type, share_type>> get_balance()const;
@@ -83,6 +83,6 @@ namespace graphene {
 	}
 }
 FC_REFLECT(graphene::chain::dividend_hidden_operation::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte)(limited_shareholder)(if_native)(if_active))
-FC_REFLECT(graphene::chain::dividend_hidden_operation, (if_show)(fee)(isser)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))
+FC_REFLECT(graphene::chain::dividend_hidden_operation, (if_show)(fee)(issuer)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))
 FC_REFLECT(graphene::chain::dividend_operation::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte)(limited_shareholder)(if_native)(if_active))
-FC_REFLECT(graphene::chain::dividend_operation, (if_show)(fee)(isser)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(receivers)(describtion)(extensions))
+FC_REFLECT(graphene::chain::dividend_operation, (if_show)(fee)(issuer)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(receivers)(describtion)(extensions))

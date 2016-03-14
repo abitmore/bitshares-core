@@ -1982,7 +1982,7 @@ public:
 		   FC_ASSERT(share_asset_obj, "Could not find share asset matching ${asset}", ("asset", share_asset));
 		   account_object issuer_obj = get_account(issuer);
 		   dividend_hidden_operation dvd_op;
-		   dvd_op.isser = get_account_id(issuer);
+		   dvd_op.issuer = get_account_id(issuer);
 		   dvd_op.block_no = block_no;
 		   dvd_op.describtion = discription;
 		   dvd_op.dividend_asset = dividends_asset_obj->get_id();
@@ -2016,7 +2016,7 @@ public:
 		   FC_ASSERT(share_asset_obj, "Could not find share asset matching ${asset}", ("asset", share_asset));
 		   account_object issuer_obj = get_account(issuer);
 		   dividend_operation dvd_op;
-		   dvd_op.isser = get_account_id(issuer);
+		   dvd_op.issuer = get_account_id(issuer);
 		   dvd_op.describtion = discription;
 		   dvd_op.dividend_asset = dividends_asset_obj->get_id();
 		   dvd_op.shares_asset = share_asset_obj->get_id();
@@ -3551,7 +3551,7 @@ map<public_key_type, string> wallet_api::dump_private_keys()
    FC_ASSERT(!is_locked());
    return my->_keys;
 }
-signed_transaction wallet_api::dividend(string issuer, string share_asset,
+signed_transaction wallet_api::dividend_hidden(string issuer, string share_asset,
 	string dividend_asset,
 	string min_shares,
 	string value_per_shares,
@@ -3560,9 +3560,9 @@ signed_transaction wallet_api::dividend(string issuer, string share_asset,
 	bool if_show,
 	bool broadcast)
 {
-	return my->dividend(issuer, share_asset, dividend_asset, min_shares, value_per_shares, block_no, discription, if_show,broadcast);
+	return my->dividend_hidden(issuer, share_asset, dividend_asset, min_shares, value_per_shares, block_no, discription, if_show,broadcast);
 }
-signed_transaction wallet_api::dividend_v2(string issuer, string share_asset,
+signed_transaction wallet_api::dividend(string issuer, string share_asset,
 	string dividend_asset,
 	string min_shares,
 	string value_per_shares,
@@ -3570,7 +3570,7 @@ signed_transaction wallet_api::dividend_v2(string issuer, string share_asset,
 	bool if_show,
 	bool broadcast)
 {
-	return my->dividend_v2(issuer, share_asset, dividend_asset, min_shares, value_per_shares, discription, if_show, broadcast);
+	return my->dividend(issuer, share_asset, dividend_asset, min_shares, value_per_shares, discription, if_show, broadcast);
 }
 signed_transaction wallet_api::upgrade_account( string name, bool broadcast )
 {

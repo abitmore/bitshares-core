@@ -50,7 +50,7 @@ struct get_impacted_account_visitor
 			   _impacted.insert(itr->first);
 		   }
 	   }
-	   _impacted.insert(op.isser);
+	   _impacted.insert(op.issuer);
    }
    void operator()(const dividend_operation& op)
    {
@@ -60,7 +60,7 @@ struct get_impacted_account_visitor
 			   _impacted.insert(receiver.first);
 		   }
 	   }
-	   _impacted.insert(op.isser);
+	   _impacted.insert(op.issuer);
    }
    void operator()( const asset_claim_fees_operation& op ){}
    void operator()( const limit_order_create_operation& op ) {}

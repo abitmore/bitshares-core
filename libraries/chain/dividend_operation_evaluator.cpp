@@ -7,7 +7,7 @@ void_result dividend_hidden_operation_evaluator::do_evaluate(const dividend_hidd
 	{
 		try{
 				const database& d = db();
-				const account_object& from_account = op.isser(d);
+				const account_object& from_account = op.issuer(d);
 				const asset_id_type   share = op.shares_asset;
 				const asset_id_type   dividend = op.dividend_asset;
 				const asset_object&   asset_type_shares = op.shares_asset(d);
@@ -50,7 +50,7 @@ void_result dividend_hidden_operation_evaluator::do_apply(const dividend_hidden_
 {try{
 	ilog("start dividend");
 	database& d = db();
-	db().adjust_balance(op.isser, -asset(dividends, op.dividend_asset));
+	db().adjust_balance(op.issuer, -asset(dividends, op.dividend_asset));
 	for (auto itr = accounts_dividends.begin(); itr != accounts_dividends.end(); itr++)
 	{
 		d.adjust_balance(itr->first, itr->second);
@@ -69,11 +69,11 @@ vector<pair<account_id_type, share_type>> dividend_hidden_operation_evaluator::g
 	const database& d = db();
 	return std::move(d.get_satisfied_account_balance(op.shares_asset, op.min_shares));
 }
-void_result dividend_operation_v2_evaluator::do_evaluate(const dividend_operation& op)
+void_result dividend_operation_evaluator::do_evaluate(const dividend_operation& op)
 	{
 		try{
 				const database& d = db();
-				const account_object& from_account = op.isser(d);
+				const account_object& from_account = op.issuer(d);
 				const asset_id_type   share = op.shares_asset;
 				const asset_id_type   dividend = op.dividend_asset;
 				const asset_object&   asset_type_shares = op.shares_asset(d);
@@ -97,12 +97,12 @@ void_result dividend_operation_v2_evaluator::do_evaluate(const dividend_operatio
 			}
 		FC_CAPTURE_AND_RETHROW((op))
 	}
-void_result dividend_operation_v2_evaluator::do_apply(const dividend_operation& op)
+void_result dividend_operation_evaluator::do_apply(const dividend_operation& op)
 {
 	try{
 		ilog("start dividend");
 		database& d = db();
-		db().adjust_balance(op.isser, -asset(dividends, op.dividend_asset));
+		db().adjust_balance(op.issuer, -asset(dividends, op.dividend_asset));
 		for (auto itr = op.receivers.begin(); itr != op.receivers.end(); itr++)
 		{
 			d.adjust_balance(itr->first, itr->second);

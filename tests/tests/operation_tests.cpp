@@ -554,7 +554,7 @@ BOOST_AUTO_TEST_CASE(dividend_hidden_operation)
 		transfer(com, hold3, asset(3000, uia.get_id()));
 		graphene::chain::dividend_hidden_operation dop1;
 
-		dop1.isser = committee_account;
+		dop1.issuer = committee_account;
 		dop1.block_no = 0;
 		dop1.shares_asset = uia.id;
 		dop1.dividend_asset = asset_id_type();
