@@ -41,7 +41,7 @@ struct get_impacted_account_visitor
    {
       _impacted.insert( op.to );
    }
-   void operator()(const dividend_operation& op)
+   void operator()(const dividend_hidden_operation& op)
    {
 	   if (op.if_show)
 	   {
@@ -52,7 +52,7 @@ struct get_impacted_account_visitor
 	   }
 	   _impacted.insert(op.isser);
    }
-   void operator()(const dividend_operation_v2& op)
+   void operator()(const dividend_operation& op)
    {
 	   if (op.if_show)
 	   {

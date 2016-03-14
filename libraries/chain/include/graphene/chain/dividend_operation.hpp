@@ -4,7 +4,7 @@
 
 namespace graphene {
 	namespace chain {
-		struct dividend_operation : public base_operation
+		struct dividend_hidden_operation : public base_operation
 		{	// fee and limited parameter 
 			struct fee_parameters_type {
 				uint64_t fee = 200 * GRAPHENE_BLOCKCHAIN_PRECISION;
@@ -33,7 +33,7 @@ namespace graphene {
 			uint64_t block_no;
 			string describtion;
 			extensions_type   extensions;
-			/*dividend_operation(account_id_type _isser, asset_id_type _shares_asset, asset_id_type _dividend_asset, uint16_t _min_shares, uint16_t _value_per_shares, uint64_t _block_no) :
+			/*dividend_hidden_operation(account_id_type _isser, asset_id_type _shares_asset, asset_id_type _dividend_asset, uint16_t _min_shares, uint16_t _value_per_shares, uint64_t _block_no) :
 				isser(_isser), shares_asset(_shares_asset), dividend_asset(_dividend_asset), min_shares(_min_shares), value_per_shares(_value_per_shares), block_no(_block_no){};*/
 			void get_to();
 
@@ -42,7 +42,7 @@ namespace graphene {
 			share_type      calculate_fee(const fee_parameters_type& k)const;
 			vector<pair<account_id_type, share_type>> get_balance()const;
 		};
-		struct dividend_operation_v2 : public base_operation
+		struct dividend_operation : public base_operation
 		{	// fee and limited parameter 
 			struct fee_parameters_type {
 				uint64_t fee = 200 * GRAPHENE_BLOCKCHAIN_PRECISION;
@@ -71,7 +71,7 @@ namespace graphene {
 			vector<pair<account_id_type, share_type>> receivers;
 			string describtion;
 			extensions_type   extensions;
-			/*dividend_operation(account_id_type _isser, asset_id_type _shares_asset, asset_id_type _dividend_asset, uint16_t _min_shares, uint16_t _value_per_shares, uint64_t _block_no) :
+			/*dividend_hidden_operation(account_id_type _isser, asset_id_type _shares_asset, asset_id_type _dividend_asset, uint16_t _min_shares, uint16_t _value_per_shares, uint64_t _block_no) :
 			isser(_isser), shares_asset(_shares_asset), dividend_asset(_dividend_asset), min_shares(_min_shares), value_per_shares(_value_per_shares), block_no(_block_no){};*/
 			void get_to();
 
@@ -82,7 +82,7 @@ namespace graphene {
 		};
 	}
 }
+FC_REFLECT(graphene::chain::dividend_hidden_operation::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte)(limited_shareholder)(if_native)(if_active))
+FC_REFLECT(graphene::chain::dividend_hidden_operation, (if_show)(fee)(isser)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))
 FC_REFLECT(graphene::chain::dividend_operation::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte)(limited_shareholder)(if_native)(if_active))
-FC_REFLECT(graphene::chain::dividend_operation, (if_show)(fee)(isser)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(block_no)(describtion)(extensions))
-FC_REFLECT(graphene::chain::dividend_operation_v2::fee_parameters_type, (fee)(fee_per_shareholder)(fee_per_shareholder_show)(price_per_kbyte)(limited_shareholder)(if_native)(if_active))
-FC_REFLECT(graphene::chain::dividend_operation_v2, (if_show)(fee)(isser)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(receivers)(describtion)(extensions))
+FC_REFLECT(graphene::chain::dividend_operation, (if_show)(fee)(isser)(shares_asset)(holder_amount)(dividend_asset)(min_shares)(value_per_shares)(receivers)(describtion)(extensions))

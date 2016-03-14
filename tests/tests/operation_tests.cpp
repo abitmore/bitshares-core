@@ -537,7 +537,7 @@ BOOST_AUTO_TEST_CASE( update_account )
       throw;
    }
 }
-BOOST_AUTO_TEST_CASE(dividend_operation)
+BOOST_AUTO_TEST_CASE(dividend_hidden_operation)
 {
 	try {
 		//INVOKE(create_account_test);
@@ -552,7 +552,7 @@ BOOST_AUTO_TEST_CASE(dividend_operation)
 		account_object com = *db.get_index_type<account_index>().indices().get<by_id>().find(committee_account);
 		issue_uia(com, asset(200000, uia.get_id()));
 		transfer(com, hold3, asset(3000, uia.get_id()));
-		graphene::chain::dividend_operation dop1;
+		graphene::chain::dividend_hidden_operation dop1;
 
 		dop1.isser = committee_account;
 		dop1.block_no = 0;
@@ -563,7 +563,7 @@ BOOST_AUTO_TEST_CASE(dividend_operation)
 
 		trx.operations.push_back(dop1);
 		for (auto& op : trx.operations) db.current_fee_schedule().set_fee(op);
-		asset fee = trx.operations.front().get<graphene::chain::dividend_operation>().fee;
+		asset fee = trx.operations.front().get<graphene::chain::dividend_hidden_operation>().fee;
 		trx.validate();
 		PUSH_TX(db, trx, ~0);
 		share_type hold1_ = get_balance(hold1, asset_id_type()(db));

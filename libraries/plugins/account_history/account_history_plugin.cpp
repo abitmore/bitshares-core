@@ -99,7 +99,7 @@ void account_history_plugin_impl::update_account_histories( const signed_block& 
          impacted.insert( oho.result.get<object_id_type>() );
 	  else
 	  {
-		  if (op.op.which() == operation::tag< dividend_operation >::value)
+		  if (op.op.which() == operation::tag< dividend_hidden_operation >::value)
 			  graphene::app::operation_get_impacted_accounts(op.op, impacted,&db);
 		  else
 			  graphene::app::operation_get_impacted_accounts(op.op, impacted);

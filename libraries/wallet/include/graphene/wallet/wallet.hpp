@@ -1395,7 +1395,7 @@ class wallet_api
 		 *@param discription discription about this dividend.
 		 *@param if show transation history in transation record of receiver
 		 */
-	  signed_transaction dividend(string issuer,
+	  signed_transaction dividend_hidden(string issuer,
 		  string share_asset,
 		  string dividend_asset,
 		  string min_shares,
@@ -1413,7 +1413,7 @@ class wallet_api
 	  *@param discription discription about this dividend.
 	  *@param if show transation history in transation record of receiver
 	  */
-	  signed_transaction dividend_v2(string issuer,
+	  signed_transaction dividend(string issuer,
 		  string share_asset,
 		  string dividend_asset,
 		  string min_shares,

@@ -3,7 +3,7 @@
 #include <graphene/chain/dividend_operation_evaluator.hpp>
 namespace graphene {
 	namespace chain {
-		share_type dividend_operation::calculate_fee(const fee_parameters_type& schedule)const
+		share_type dividend_hidden_operation::calculate_fee(const fee_parameters_type& schedule)const
 		{
 			FC_ASSERT(holder_amount > 0);
 			FC_ASSERT(holder_amount <= schedule.limited_shareholder,"amount of shareholder is out of limited");
@@ -24,17 +24,17 @@ namespace graphene {
 			return core_fee_required;
 			
 		}
-		void dividend_operation::validate()const
+		void dividend_hidden_operation::validate()const
 		{	
 			FC_ASSERT(fee.amount >= 0);
 			FC_ASSERT(min_shares >= 1);
 			FC_ASSERT(holder_amount > 0);
 		}
-		vector<pair<account_id_type, share_type>>dividend_operation::get_balance()const{
-			dividend_operation_evaluator tmp_dp;
+		vector<pair<account_id_type, share_type>>dividend_hidden_operation::get_balance()const{
+			dividend_hidden_operation_evaluator tmp_dp;
 			return tmp_dp.get_balance(*this);
 		}
-		share_type dividend_operation_v2::calculate_fee(const fee_parameters_type& schedule)const
+		share_type dividend_operation::calculate_fee(const fee_parameters_type& schedule)const
 		{
 			FC_ASSERT(holder_amount > 0);
 			FC_ASSERT(holder_amount <= schedule.limited_shareholder, "amount of shareholder is out of limited");
@@ -55,7 +55,7 @@ namespace graphene {
 			return core_fee_required;
 
 		}
-		void dividend_operation_v2::validate()const
+		void dividend_operation::validate()const
 		{
 			FC_ASSERT(fee.amount >= 0);
 			FC_ASSERT(min_shares >= 1);

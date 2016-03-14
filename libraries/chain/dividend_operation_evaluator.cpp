@@ -3,7 +3,7 @@
 #include <graphene/chain/exceptions.hpp>
 #include <graphene/chain/hardfork.hpp>
 namespace graphene {namespace chain {
-void_result dividend_operation_evaluator::do_evaluate(const dividend_operation& op)
+void_result dividend_hidden_operation_evaluator::do_evaluate(const dividend_hidden_operation& op)
 	{
 		try{
 				const database& d = db();
@@ -46,7 +46,7 @@ void_result dividend_operation_evaluator::do_evaluate(const dividend_operation& 
 			}
 		FC_CAPTURE_AND_RETHROW((op))
 	}
-void_result dividend_operation_evaluator::do_apply(const dividend_operation& op)
+void_result dividend_hidden_operation_evaluator::do_apply(const dividend_hidden_operation& op)
 {try{
 	ilog("start dividend");
 	database& d = db();
@@ -61,15 +61,15 @@ void_result dividend_operation_evaluator::do_apply(const dividend_operation& op)
 		
 	FC_CAPTURE_AND_RETHROW((op))
 	}
-uint64_t dividend_operation_evaluator::get_asset_holder(const dividend_operation& op){
+uint64_t dividend_hidden_operation_evaluator::get_asset_holder(const dividend_hidden_operation& op){
 	const database& d = db();
 	return d.get_satisfied_holder(op.shares_asset, op.min_shares);
 }
-vector<pair<account_id_type, share_type>> dividend_operation_evaluator::get_balance(const dividend_operation& op){
+vector<pair<account_id_type, share_type>> dividend_hidden_operation_evaluator::get_balance(const dividend_hidden_operation& op){
 	const database& d = db();
 	return std::move(d.get_satisfied_account_balance(op.shares_asset, op.min_shares));
 }
-void_result dividend_operation_v2_evaluator::do_evaluate(const dividend_operation_v2& op)
+void_result dividend_operation_v2_evaluator::do_evaluate(const dividend_operation& op)
 	{
 		try{
 				const database& d = db();
@@ -97,7 +97,7 @@ void_result dividend_operation_v2_evaluator::do_evaluate(const dividend_operatio
 			}
 		FC_CAPTURE_AND_RETHROW((op))
 	}
-void_result dividend_operation_v2_evaluator::do_apply(const dividend_operation_v2& op)
+void_result dividend_operation_v2_evaluator::do_apply(const dividend_operation& op)
 {
 	try{
 		ilog("start dividend");

@@ -367,21 +367,21 @@ namespace graphene { namespace app {
 		if (node->id.instance() <= start.instance.value)
 		{
 			operation_history_object _op_history_ob = node->operation_id(db);
-			if (_op_history_ob.op.which() == operation::tag<dividend_operation_v2>::value )
+			if (_op_history_ob.op.which() == operation::tag<dividend_operation>::value )
 			{
 				pair<account_id_type, share_type> _receiver;
-				uint32_t l = _op_history_ob.op.get<dividend_operation_v2>().receivers.size();
+				uint32_t l = _op_history_ob.op.get<dividend_operation>().receivers.size();
 				for (uint32_t i = 0; i < l; i++)
 				{
-					if (_op_history_ob.op.get<dividend_operation_v2>().receivers[i].first == account)
+					if (_op_history_ob.op.get<dividend_operation>().receivers[i].first == account)
 					{
-						_receiver.second = _op_history_ob.op.get<dividend_operation_v2>().receivers[i].second;
+						_receiver.second = _op_history_ob.op.get<dividend_operation>().receivers[i].second;
 						_receiver.first = account;
 						break;
 					}
 				}
-				_op_history_ob.op.get<dividend_operation_v2>().receivers.clear();
-				_op_history_ob.op.get<dividend_operation_v2>().receivers.push_back(_receiver);
+				_op_history_ob.op.get<dividend_operation>().receivers.clear();
+				_op_history_ob.op.get<dividend_operation>().receivers.push_back(_receiver);
 				result.push_back(_op_history_ob);
 			 }
 			result.push_back(node->operation_id(db));

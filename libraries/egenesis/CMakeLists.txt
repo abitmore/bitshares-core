@@ -8,7 +8,7 @@ target_link_libraries( graphene_egenesis_none graphene_chain fc )
 target_include_directories( graphene_egenesis_none
    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
-add_executable( embed_genesis
+add_executable(embed_genesis
    embed_genesis.cpp
    )
 
