@@ -24,7 +24,7 @@
 #include <fc/bitutil.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <algorithm>
-#include <fc\crypto\sha256.hpp>
+//#include <fc\crypto\sha256.hpp>
 namespace graphene { namespace chain {
 
 digest_type processed_transaction::merkle_digest()const
