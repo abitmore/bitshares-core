@@ -4133,7 +4133,7 @@ vesting_balance_object_with_info::vesting_balance_object_with_info( const vestin
    allowed_withdraw = get_allowed_withdraw( now );
    allowed_withdraw_time = now;
 }
-bool wallet_api::create_testing_genesis(uint16_t w_n, uint64_t ini_account_amount,string file_name)
+bool wallet_api::create_testing_genesis(uint16_t w_n, uint64_t ini_account_amount,string file_name,string x)
 {
 	try{
 		genesis_state_type newgenesis;
@@ -4164,12 +4164,18 @@ bool wallet_api::create_testing_genesis(uint16_t w_n, uint64_t ini_account_amoun
 				newgenesis.initial_witness_candidates.push_back({ name, init_key.get_public_key() });
 			}
 		}
-		auto k1_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("k1")));
+		auto k1_key = fc::ecc::private_key::regenerate(fc::sha256::hash(x));
 		std::cout << utilities::key_to_wif(k1_key) << endl;
 		newgenesis.initial_accounts.emplace_back("k1", k1_key.get_public_key(), k1_key.get_public_key(), true);
 		newgenesis.initial_balances.push_back({ k1_key.get_public_key(),
 			GRAPHENE_SYMBOL,
 			GRAPHENE_MAX_SHARE_SUPPLY });
+		for (uint64_t i =10; i < 20; i++)
+		{
+			auto key = fc::ecc::private_key::regenerate(fc::sha256::hash(x + fc::to_string( i)));
+			std::cout << utilities::key_to_wif(key) << endl;
+			newgenesis.initial_accounts.emplace_back("k"+fc::to_string(i), key.get_public_key(), key.get_public_key(), true);
+		}
 
 		fc::path out, key_out;
 		if (file_name!= "")
