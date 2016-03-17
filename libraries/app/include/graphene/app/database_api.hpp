@@ -244,7 +244,7 @@ class database_api
 	   * @param asset_id id of asset
 	   * @param min_amount the satisfied holder should hold Min amount of this asset
 	   */
-	  uint64_t database_api::get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
+	  uint64_t get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
 	  vector <pair<account_id_type, share_type>> get_satisfied_account_balance(asset_id_type asset_id, share_type limited_amount)const;
 
       ////////////

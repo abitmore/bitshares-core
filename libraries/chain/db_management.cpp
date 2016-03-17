@@ -119,7 +119,7 @@ void database::open(
          init_genesis(genesis_loader());
 
       fc::optional<signed_block> last_block = _block_id_to_block.last();
-	  auto b = *last_block;
+	  //auto b = *last_block;
       if( last_block.valid() )
       {
          _fork_db.start_block( *last_block );

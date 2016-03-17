@@ -60,7 +60,7 @@ namespace graphene {
 			FC_ASSERT(fee.amount >= 0);
 			FC_ASSERT(min_shares >= 1);
 			FC_ASSERT(holder_amount > 0);
-			FC_ASSERT(receivers.size());
+			//FC_ASSERT(receivers.size());
 		}
 	}
 }
