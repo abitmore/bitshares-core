@@ -38,5 +38,5 @@ object_database/*
 build
 *.pyc
 *.pyo
-dev.json
+
 libraries\wallet\wallet.cpp
