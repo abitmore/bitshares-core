@@ -4149,7 +4149,7 @@ bool wallet_api::create_testing_genesis(uint16_t w_n, uint64_t ini_account_amoun
 			newgenesis.initial_parameters.block_interval);
 		newgenesis.initial_parameters.block_interval = 10;
 		newgenesis.initial_active_witnesses = w_n;
-		auto init_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init")));
+		auto init_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init")+x));
 		std::cout << utilities::key_to_wif(init_key) << endl;
 		for (uint64_t i = 0; i < ini_account_amount; ++i)
 		{
