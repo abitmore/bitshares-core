@@ -20,7 +20,7 @@ namespace graphene {
 
 			uint8_t depth;
 
-			string discripiton;
+			string description;
 
 			string true_disc;
 
@@ -31,15 +31,35 @@ namespace graphene {
 			share_type      calculate_fee(const fee_parameters_type& k)const;
 			
 		};
-		struct equal_bit_create : public base_operation
+		struct equal_bit_input : public base_operation
 		{
 			struct fee_parameters_type {
 				uint64_t fee = 2 * GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint32_t price_per_kbyte = 10 * GRAPHENE_BLOCKCHAIN_PRECISION; /// only required for large memos.
 			};
 			account_id_type issuer;
-
-
-		}
+			equal_bit_id_type equal_id;
+			uint8_t depth;
+			asset input_amount;
+			uint16_t output_ratio;
+			vector<bool> input_value;
+			account_id_type fee_payer()const { return issuer; }
+			void            validate()const;
+			share_type      calculate_fee(const fee_parameters_type& k)const;
+		};
+		struct equal_bit_output : public base_operation
+		{
+			struct fee_parameters_type {
+				uint64_t fee = 2 * GRAPHENE_BLOCKCHAIN_PRECISION;
+				uint32_t price_per_kbyte = 10 * GRAPHENE_BLOCKCHAIN_PRECISION; /// only required for large memos.
+			};
+			account_id_type issuer;
+			equal_bit_id_type equal_id;
+			operation_history_id_type input_operation_id;
+			vector<bool> input_value;
+			account_id_type fee_payer()const { return issuer; }
+			void            validate()const;
+			share_type      calculate_fee(const fee_parameters_type& k)const;
+		};
 	}
 }

@@ -17,7 +17,7 @@ namespace graphene {
 		{
 		public:
 			static const uint8_t space_id = implementation_ids;
-			static const uint8_t type_id = impl_equal_bit_object_type;
+			static const uint8_t type_id = policy_equal_bit_object_type;
 			/** the people who owner this policy ,he can choice if it is a public policy 
 			*/
 			account_id_type owner;
@@ -36,5 +36,22 @@ namespace graphene {
 			operation_history_id_type  unreciver_policy;
 
 		};
+		struct by_owner{};
+
+		/**
+		* @ingroup object_index
+		*/
+		typedef multi_index_container<
+			equal_bit_object,
+			indexed_by<
+			ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+			ordered_unique< tag<by_owner>, member<equal_bit_object, account_id_type, &equal_bit_object::owner> >
+			>
+		> equal_bit_multi_index_type;
+
+		/**
+		* @ingroup object_index
+		*/
+		typedef generic_index<equal_bit_object, equal_bit_multi_index_type> account_bit_index;
 	}
 }
