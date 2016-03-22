@@ -4,7 +4,7 @@
 
 namespace graphene {
 	namespace chain {
-		struct equal_bit_obeject_create : public base_operation
+		struct equal_bit_object_create : public base_operation
 		{
 			struct fee_parameters_type {
 				uint64_t fee = 2000 * GRAPHENE_BLOCKCHAIN_PRECISION;
@@ -63,3 +63,9 @@ namespace graphene {
 		};
 	}
 }
+FC_REFLECT(graphene::chain::equal_bit_object_create::fee_parameters_type, (fee)(fee_per_shareholder)(if_native)(if_active))
+FC_REFLECT(graphene::chain::equal_bit_object_create, (issuer)(public_policy)(depth)(description)(true_disc)(false_disc))
+FC_REFLECT(graphene::chain::equal_bit_input::fee_parameters_type, (fee)(fee_per_shareholder))
+FC_REFLECT(graphene::chain::equal_bit_input, (issuer)(equal_id)(depth)(input_amount)(output_ratio)(input_value))
+FC_REFLECT(graphene::chain::equal_bit_output::fee_parameters_type, (fee)(fee_per_shareholder))
+FC_REFLECT(graphene::chain::equal_bit_output, (issuer)(equal_id)(input_operation_id)(input_value))
