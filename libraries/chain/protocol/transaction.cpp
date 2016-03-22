@@ -302,7 +302,7 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
 flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
 { try {
 	auto ops = this->operations;
-	wdump((ops));
+	idump((ops));
    auto d = sig_digest( chain_id );
 
    flat_set<public_key_type> result;
@@ -313,7 +313,7 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
          tx_duplicate_sig,
          "Duplicate Signature detected" );
    }
-   edump((chain_id)(d)(signatures)(result));
+   idump((chain_id)(d)(signatures)(result));
    return result;
    
 } FC_CAPTURE_AND_RETHROW() }
