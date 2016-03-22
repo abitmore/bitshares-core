@@ -52,6 +52,6 @@ namespace graphene {
 		/**
 		* @ingroup object_index
 		*/
-		typedef generic_index<equal_bit_object, equal_bit_multi_index_type> account_bit_index;
+		typedef generic_index<equal_bit_object, equal_bit_multi_index_type> equal_bit_index;
 	}
 }

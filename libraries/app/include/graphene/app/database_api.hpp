@@ -34,6 +34,7 @@
 #include <graphene/chain/market_evaluator.hpp>
 #include <graphene/chain/operation_history_object.hpp>
 #include <graphene/chain/proposal_object.hpp>
+#include <graphene/chain/equal_object.hpp>
 #include <graphene/chain/worker_evaluator.hpp>
 #include <graphene/chain/witness_object.hpp>
 #include <graphene/chain/confidential_evaluator.hpp>
@@ -473,7 +474,13 @@ class database_api
        *  @return the set of blinded balance objects by commitment ID
        */
       vector<blinded_balance_object> get_blinded_balances( const flat_set<commitment_type>& commitments )const;
-
+	  //////////////////////
+	  // policy //
+	  //////////////////////
+	  /**
+	  *  @return the all exist equal_bit object
+	  */
+	  vector<equal_bit_object> get_equal_bit()const;
    private:
       std::shared_ptr< database_api_impl > my;
 };
@@ -568,4 +575,6 @@ FC_API(graphene::app::database_api,
 
    // Blinded balances
    (get_blinded_balances)
+
+   (get_equal_bit)
 )

@@ -128,6 +128,8 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       // Blinded balances
       vector<blinded_balance_object> get_blinded_balances( const flat_set<commitment_type>& commitments )const;
 
+	  //policy
+	  vector<equal_bit_object> get_equal_bit(uint8_t max=100)const;
    //private:
       template<typename T>
       void subscribe_to_item( const T& i )const
@@ -1002,6 +1004,17 @@ void database_api_impl::unsubscribe_from_market(asset_id_type a, asset_id_type b
    _market_subscriptions.erase(std::make_pair(a,b));
 }
 
+vector<equal_bit_object> database_api_impl::get_equal_bit(uint8_t max=100)const{
+	vector<equal_bit_object> result;
+	auto& index = _db.get_index_type<equal_bit_index>().indices().get<by_id>();
+	uint8_t i = 0;
+	for (auto itr = index.begin() ;itr != index.end() && i < max; itr++)
+	{
+		result.push_back(*itr);
+		i++;
+	}
+	return result;
+}
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Witnesses                                                        //
@@ -1337,6 +1350,9 @@ bool database_api_impl::verify_authority( const signed_transaction& trx )const
 bool database_api::verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const
 {
    return my->verify_account_authority( name_or_id, signers );
+}
+vector<equal_bit_object> database_api::get_equal_bit()const{
+	return my->get_equal_bit();
 }
 
 bool database_api_impl::verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& keys )const
