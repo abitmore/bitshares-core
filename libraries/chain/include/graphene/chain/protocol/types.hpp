@@ -101,7 +101,9 @@ namespace graphene { namespace chain {
    {
       relative_protocol_ids = 0,
       protocol_ids          = 1,
-      implementation_ids    = 2
+      implementation_ids    = 2,
+	  policy_ids            = 3
+
    };
 
    inline bool is_relative( object_id_type o ){ return o.space() == 0; }
@@ -150,6 +152,10 @@ namespace graphene { namespace chain {
       impl_chain_property_object_type,
       impl_witness_schedule_object_type,
       impl_budget_record_object_type
+   };
+   enum policy_object_type
+   {
+	   policy_equal_bit_object_type
    };
 
    //typedef fc::unsigned_int            object_id_type;
@@ -215,6 +221,10 @@ namespace graphene { namespace chain {
    typedef object_id< implementation_ids, impl_witness_schedule_object_type, witness_schedule_object>                   witness_schedule_id_type;
    typedef object_id< implementation_ids, impl_budget_record_object_type, budget_record_object >                        budget_record_id_type;
    typedef object_id< implementation_ids, impl_blinded_balance_object_type, blinded_balance_object >                    blinded_balance_id_type;
+
+   class equal_bit_object;
+
+   typedef object_id< policy_ids, policy_equal_bit_object_type, equal_bit_object >										equal_bit_id_type;
 
    typedef fc::array<char, GRAPHENE_MAX_ASSET_SYMBOL_LENGTH>    symbol_type;
    typedef fc::ripemd160                                        block_id_type;

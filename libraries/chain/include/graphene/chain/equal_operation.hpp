@@ -4,10 +4,10 @@
 
 namespace graphene {
 	namespace chain {
-		struct equal_obeject_create : public base_operation
+		struct equal_bit_obeject_create : public base_operation
 		{
 			struct fee_parameters_type {
-				uint64_t fee = 200 * GRAPHENE_BLOCKCHAIN_PRECISION;
+				uint64_t fee = 2000 * GRAPHENE_BLOCKCHAIN_PRECISION;
 				uint32_t price_per_kbyte = 10 * GRAPHENE_BLOCKCHAIN_PRECISION; /// only required for large memos.
 				bool if_native = false;
 				bool if_active = true;
@@ -31,5 +31,15 @@ namespace graphene {
 			share_type      calculate_fee(const fee_parameters_type& k)const;
 			
 		};
+		struct equal_bit_create : public base_operation
+		{
+			struct fee_parameters_type {
+				uint64_t fee = 2 * GRAPHENE_BLOCKCHAIN_PRECISION;
+				uint32_t price_per_kbyte = 10 * GRAPHENE_BLOCKCHAIN_PRECISION; /// only required for large memos.
+			};
+			account_id_type issuer;
+
+
+		}
 	}
 }
