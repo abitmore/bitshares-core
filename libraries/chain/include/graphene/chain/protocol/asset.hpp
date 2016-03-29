@@ -131,6 +131,13 @@ namespace graphene { namespace chain {
 
       bool is_null()const;
       void validate()const;
+
+      std::pair<asset_id_type, asset_id_type> get_market()const
+      {
+         return base.asset_id < quote.asset_id ?
+                std::make_pair(base.asset_id, quote.asset_id) :
+                std::make_pair(quote.asset_id, base.asset_id);
+      }
    };
 
    price operator / ( const asset& base, const asset& quote );
