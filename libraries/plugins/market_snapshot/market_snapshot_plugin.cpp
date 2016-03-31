@@ -181,8 +181,8 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
    // take snapshots
    for( const snapshot_market_type& m : _changed_markets )
    {
-      const auto& config = _tracked_markets.get( m );
-      if( b.timestamp < m.begin_time ) continue;
+      const auto& config = _tracked_markets.at( m );
+      if( b.timestamp < config.begin_time ) continue;
 
       // init key
       market_snapshot_key key( m.first, m.second, b.timestamp );
@@ -314,7 +314,7 @@ void market_snapshot_plugin::plugin_startup()
 {
 }
 
-const snapshot_markets_type& market_snapshot_plugin::tracked_markets() const
+const snapshot_markets_config_type& market_snapshot_plugin::tracked_markets() const
 {
    return my->_tracked_markets;
 }

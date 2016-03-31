@@ -140,11 +140,6 @@ typedef generic_index<market_snapshot_new_order_object,
                       market_snapshot_order_multi_index_type> market_snapshot_order_index;
 
 
-typedef std::pair< asset_id_type, asset_id_type >                 snapshot_market_type;
-// note: use flat data types here for small sets
-typedef flat_set< snapshot_market_type >                          snapshot_markets_type;
-typedef flat_map< snapshot_market_type, market_snapshot_config >  snapshot_markets_config_type;
-
 struct market_snapshot_config
 {
    fc::time_point_sec     begin_time       = fc::time_point_sec( 0 );
@@ -153,7 +148,12 @@ struct market_snapshot_config
    bool                   track_bid_orders = true;
 };
 
-struct market_snapshot_meta_object : public abstract_object<market_snapshot_object>
+typedef std::pair< asset_id_type, asset_id_type >                 snapshot_market_type;
+// note: use flat data types here for small sets
+typedef flat_set< snapshot_market_type >                          snapshot_markets_type;
+typedef flat_map< snapshot_market_type, market_snapshot_config >  snapshot_markets_config_type;
+
+struct market_snapshot_meta_object : public abstract_object<market_snapshot_meta_object>
 {
    static const uint8_t space_id = MARKET_SNAPSHOT_SPACE_ID;
    static const uint8_t type_id  = 2;
@@ -176,7 +176,7 @@ typedef multi_index_container<
       ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
       ordered_unique< tag<by_key>, member< market_snapshot_meta_object,
                                            snapshot_market_type,
-                                           &market_snapshot_object::market > >
+                                           &market_snapshot_meta_object::market > >
    >
 > market_snapshot_meta_object_multi_index_type;
 
@@ -205,7 +205,7 @@ class market_snapshot_plugin : public graphene::app::plugin
          const boost::program_options::variables_map& options) override;
       virtual void plugin_startup() override;
 
-      const snapshot_markets_type& tracked_markets()const;
+      const snapshot_markets_config_type& tracked_markets()const;
 
    private:
       friend class detail::market_snapshot_plugin_impl;
