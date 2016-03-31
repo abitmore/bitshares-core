@@ -143,6 +143,7 @@ struct snapshot_new_order_visitor
          order.create_time = _now;
          order.for_sale = op.amount_to_sell.amount;
          order.sell_price = op.get_price();
+         //idump((order));
       });
    }
 };
@@ -166,10 +167,13 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
 
    if( _changed_markets.size() == 0 ) return;
 
-   if( count > 10000 ) return;
+   //if( b.timestamp <= fc::time_point_sec( 1458752400 ) ) return;
+
+   //if( count > 10000 ) return;
 
    // record new orders
    const vector<optional< operation_history_object > >& hist = db.get_applied_operations();
+   idump((hist));
    for( const optional< operation_history_object >& o_op : hist )
    {
       if( o_op.valid() )
@@ -247,6 +251,7 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
            mso.feed_price = feed_price;
            mso.asks = asks;
            mso.bids = bids;
+           idump((mso));
       });
       count++;
    }
