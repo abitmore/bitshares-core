@@ -290,7 +290,7 @@ void market_snapshot_plugin::plugin_set_program_options(
 {
    cli.add_options()
          ("market-snapshot-options", boost::program_options::value<string>()->default_value("[]"),
-           "Syntax: [[base_asset_id,quote_asset_id]:{start_time,max_seconds,is_track_asks,is_track_bids},...]\nExample: [[\"1.3.0\",\"1.3.1\"]:{0,86400,true,true},{[\"1.3.0\",\"1.3.2\"]:{\"2016-01-01T00:00:00\",86400*65,false,false}].\nFor every market[A,B], please make sure A<B.")
+          "Market snapshot options. Syntax: [{base_asset_id,quote_asset_id,start_time,max_seconds,is_track_asks,is_track_bids},...] . Example: [{\"1.3.0\",\"1.3.1\",0,86400,true,true},{\"1.3.0\",\"1.3.2\",\"2016-01-01T00:00:00\",86400*65,false,false}]. For every market, please make sure base_asset_id < quote_asset_id.")
          ;
    cfg.add(cli);
 }
@@ -306,7 +306,12 @@ void market_snapshot_plugin::plugin_initialize(const boost::program_options::var
    if( options.count( "market-snapshot-options" ) )
    {
       const std::string& markets = options["market-snapshot-options"].as<string>();
-      my->_tracked_markets = fc::json::from_string(markets).as<snapshot_markets_config_type>();
+      vector<market_snapshot_config> v = fc::json::from_string(markets).as< vector<market_snapshot_config> >();
+      for( market_snapshot_config& c : v )
+      {
+         snapshot_market_type key = std::make_pair( c.base, c.quote );
+         my->_tracked_markets.insert( std::make_pair( key, c ) );
+      }
    }
 } FC_CAPTURE_AND_RETHROW() }
 

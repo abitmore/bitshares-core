@@ -142,6 +142,8 @@ typedef generic_index<market_snapshot_new_order_object,
 
 struct market_snapshot_config
 {
+   asset_id_type          base;
+   asset_id_type          quote;
    fc::time_point_sec     begin_time       = fc::time_point_sec( 0 );
    uint64_t               max_seconds      = 60 * 60 * 24 * 16;
    bool                   track_ask_orders = true;
@@ -224,7 +226,7 @@ FC_REFLECT_DERIVED( graphene::market_snapshot::market_snapshot_new_order_object,
                     (graphene::db::object),
                     (sell_price)(for_sale)(create_time)(seller)(order_id) )
 FC_REFLECT( graphene::market_snapshot::market_snapshot_config,
-                    (begin_time)(max_seconds)(track_ask_orders)(track_bid_orders) )
+                    (base)(quote)(begin_time)(max_seconds)(track_ask_orders)(track_bid_orders) )
 FC_REFLECT_DERIVED( graphene::market_snapshot::market_snapshot_meta_object,
                     (graphene::db::object),
                     (market)(config)
