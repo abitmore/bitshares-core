@@ -314,6 +314,7 @@ void market_snapshot_plugin::plugin_initialize(const boost::program_options::var
       const std::string& markets = options["market-snapshot-options"].as<string>();
       my->_tracked_markets = fc::json::from_string(markets).as<snapshot_markets_config_type>();
    }
+   idump((my->_tracked_markets));
 } FC_CAPTURE_AND_RETHROW() }
 
 void market_snapshot_plugin::plugin_startup()
