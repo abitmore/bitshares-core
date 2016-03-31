@@ -309,9 +309,9 @@ void market_snapshot_plugin::plugin_initialize(const boost::program_options::var
    database().add_index< primary_index< market_snapshot_index  > >();
    database().add_index< primary_index< market_snapshot_order_index  > >();
 
-   if( options.count( "snapshot-markets" ) )
+   if( options.count( "market-snapshot-options" ) )
    {
-      const std::string& markets = options["snapshot-markets"].as<string>();
+      const std::string& markets = options["market-snapshot-options"].as<string>();
       my->_tracked_markets = fc::json::from_string(markets).as<snapshot_markets_config_type>();
    }
 } FC_CAPTURE_AND_RETHROW() }
