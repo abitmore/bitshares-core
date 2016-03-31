@@ -149,6 +149,7 @@ struct snapshot_new_order_visitor
 
 void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
 {
+   //idump(( b.block_num() ));
    if( _tracked_markets.size() == 0 ) return;
 
    graphene::chain::database& db = database();
@@ -290,7 +291,7 @@ void market_snapshot_plugin::plugin_set_program_options(
 {
    cli.add_options()
          ("market-snapshot-options", boost::program_options::value<string>()->default_value("[]"),
-          "Market snapshot options. Syntax: [{base_asset_id,quote_asset_id,start_time,max_seconds,is_track_asks,is_track_bids},...] . Example: [{\"1.3.0\",\"1.3.1\",0,86400,true,true},{\"1.3.0\",\"1.3.2\",\"2016-01-01T00:00:00\",86400*65,false,false}]. For every market, please make sure base_asset_id < quote_asset_id.")
+          "Market snapshot options. Syntax: [{\"base\":base_asset_id,\"quote\":quote_asset_id,\"begin_time\":begin_time,\"max_seconds\":max_seconds,\"track_ask_orders\":is_track_asks,\"track_bid_orders\":is_track_bids},...] . Example: [{\"base\":\"1.3.0\",\"quote\":\"1.3.1\",\"begin_time\":\"2016-03-01T00:00:00\",\"max_seconds\":864000,\"track_ask_orders\":true,\"track_bid_orders\":true},{\"base\":\"1.3.0\",\"quote\":\"1.3.2\",\"begin_time\":\"2016-01-01T00:00:00\",\"max_seconds\":4320000,\"track_ask_orders\":false,\"track_bid_orders\":false}]")
          ;
    cfg.add(cli);
 }
@@ -309,6 +310,11 @@ void market_snapshot_plugin::plugin_initialize(const boost::program_options::var
       vector<market_snapshot_config> v = fc::json::from_string(markets).as< vector<market_snapshot_config> >();
       for( market_snapshot_config& c : v )
       {
+         if( c.base > c.quote )
+         {
+            std::swap( c.base, c.quote );
+            std::swap( c.track_bid_orders, c.track_ask_orders);
+         }
          snapshot_market_type key = std::make_pair( c.base, c.quote );
          my->_tracked_markets.insert( std::make_pair( key, c ) );
       }
