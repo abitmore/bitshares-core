@@ -140,14 +140,52 @@ typedef generic_index<market_snapshot_new_order_object,
                       market_snapshot_order_multi_index_type> market_snapshot_order_index;
 
 
+typedef std::pair< asset_id_type, asset_id_type >                 snapshot_market_type;
+// note: use flat data types here for small sets
+typedef flat_set< snapshot_market_type >                          snapshot_markets_type;
+typedef flat_map< snapshot_market_type, market_snapshot_config >  snapshot_markets_config_type;
+
+struct market_snapshot_config
+{
+   fc::time_point_sec     begin_time       = fc::time_point_sec( 0 );
+   uint64_t               max_seconds      = 60 * 60 * 24 * 16;
+   bool                   track_ask_orders = true;
+   bool                   track_bid_orders = true;
+};
+
+struct market_snapshot_meta_object : public abstract_object<market_snapshot_object>
+{
+   static const uint8_t space_id = MARKET_SNAPSHOT_SPACE_ID;
+   static const uint8_t type_id  = 2;
+
+   // key
+   snapshot_market_type   market;
+
+   // config
+   market_snapshot_config config;
+
+   // stats
+   fc::time_point_sec     oldest_snapshot_time;
+   fc::time_point_sec     newest_snapshot_time;
+   uint32_t               count;
+};
+
+typedef multi_index_container<
+   market_snapshot_meta_object,
+   indexed_by<
+      ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag<by_key>, member< market_snapshot_meta_object,
+                                           snapshot_market_type,
+                                           &market_snapshot_object::market > >
+   >
+> market_snapshot_meta_object_multi_index_type;
+
+
 namespace detail
 {
     class market_snapshot_plugin_impl;
 }
 
-typedef std::pair<asset_id_type, asset_id_type> snapshot_market_type;
-// note: use flat_set here for small sets
-typedef flat_set<snapshot_market_type>          snapshot_markets_type;
 
 /**
  *  The market snapshot plugin can be configured to track any market pairs.
@@ -185,4 +223,9 @@ FC_REFLECT_DERIVED( graphene::market_snapshot::market_snapshot_object,
 FC_REFLECT_DERIVED( graphene::market_snapshot::market_snapshot_new_order_object,
                     (graphene::db::object),
                     (sell_price)(for_sale)(create_time)(seller)(order_id) )
-
+FC_REFLECT( graphene::market_snapshot::market_snapshot_config,
+                    (begin_time)(max_seconds)(track_ask_orders)(track_bid_orders) )
+FC_REFLECT_DERIVED( graphene::market_snapshot::market_snapshot_meta_object,
+                    (graphene::db::object),
+                    (market)(config)
+                    (oldest_snapshot_time)(newest_snapshot_time)(count) )
