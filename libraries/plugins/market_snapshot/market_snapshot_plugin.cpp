@@ -84,7 +84,10 @@ void market_snapshot_plugin_impl::update_order_index( const vector<object_id_typ
             const auto& idx = db.get_index_type<market_snapshot_order_index>().indices().get<by_order_id>();
             const auto p = idx.find( id );
             if( p != idx.end() ) // found it, remove it
+            {
+               dlog("removing order ${o}",("o",*p));
                db.remove( *p );
+            }
          }
       }
    }
@@ -124,7 +127,7 @@ struct market_snapshot_operation_visitor
          order.create_time = _now;
          order.for_sale = op.amount_to_sell.amount;
          order.sell_price = op.get_price();
-         //idump((order));
+         idump((order));
       });
 
       return market;
@@ -232,15 +235,9 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       }
 
       // get statistics
-      market_snapshot_statistics_object stat_object;
-      bool new_stat = true;
       const auto& stat_idx = db.get_index_type<market_snapshot_statistics_index>().indices().get<by_key>();
       const auto stat_itr = stat_idx.find( market );
-      if( stat_itr != stat_idx.end() )
-      {
-         stat_object = *stat_itr;
-         new_stat = false;
-      }
+      bool new_stat = ( stat_itr == stat_idx.end() );
 
       // check whether need to take snapshot
       if( !new_stat && changed_markets.find( market ) == changed_markets.end() )
@@ -250,7 +247,7 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
          if( !found_feed_price ) // if feed_price does not apply
             continue;
 
-         if( feed_price == stat_object.newest_feed_price ) // if feed_price didn't change
+         if( feed_price == stat_itr->newest_feed_price ) // if feed_price didn't change
             continue;
       }
 
@@ -312,14 +309,16 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
               msso.newest_snapshot_time = b.timestamp;
               msso.newest_feed_price = feed_price;
               msso.count = 1;
+              idump((msso));
          });
       }
       else
       {
-         db.modify( stat_object, [&]( market_snapshot_statistics_object& msso ){
+         db.modify( *stat_itr, [&]( market_snapshot_statistics_object& msso ){
               msso.newest_snapshot_time = b.timestamp;
               msso.newest_feed_price = feed_price;
               msso.count += 1;
+              idump((msso));
          });
       }
 
