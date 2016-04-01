@@ -45,9 +45,9 @@ class market_snapshot_plugin_impl
 
       /**
        * This method is called as a callback after a change is made to chain database
-       * and will check whether need to take a snapshot after a block is applied.
+       * and will remove tracked orders which aren't needed any more.
        */
-      void update_changed_markets( const vector<object_id_type>& v );
+      void update_order_index( const vector<object_id_type>& v );
 
       /**
        * This method is called as a callback after a block is applied
@@ -63,16 +63,13 @@ class market_snapshot_plugin_impl
       market_snapshot_plugin&          _self;
       snapshot_markets_config_type     _tracked_markets;
    private:
-      snapshot_markets_type            _changed_markets;
-      uint64_t count = 0;
 };
 
 
 market_snapshot_plugin_impl::~market_snapshot_plugin_impl()
 {}
 
-
-void market_snapshot_plugin_impl::update_changed_markets( const vector<object_id_type>& v )
+void market_snapshot_plugin_impl::update_order_index( const vector<object_id_type>& v )
 {
    if( _tracked_markets.size() == 0 ) return;
 
@@ -82,61 +79,45 @@ void market_snapshot_plugin_impl::update_changed_markets( const vector<object_id
       if( id.is<limit_order_id_type>() ) // a limit order changed
       {
          const object* pobj = db.find_object( id );
-         if( pobj != nullptr ) // if it's not a removed object
-         {
-            const limit_order_object* order = static_cast< const limit_order_object* >( pobj );
-            const snapshot_market_type& market = order->get_market();
-            if( _tracked_markets.find( market ) != _tracked_markets.end() )
-               _changed_markets.insert( market );
-         }
-         else // if it's a removed object, try to locate it with market_snapshot_order_index
+         if( pobj == nullptr ) // if it's a removed object, locate it with market_snapshot_order_index
          {
             const auto& idx = db.get_index_type<market_snapshot_order_index>().indices().get<by_order_id>();
             const auto p = idx.find( id );
-            if( p != idx.end() )
-            {
-               // if the order is in new_order database, the market is tracked
-               _changed_markets.insert( p->sell_price.get_market() );
-            }
+            if( p != idx.end() ) // found it, remove it
+               db.remove( *p );
          }
-      }
-      else if( id.is<asset_bitasset_data_id_type>() ) // a bit_asset object changed, perhaps feed_price changed
-      {
-         //TODO possible optimization: don't take snapshot when only settlement_volume changes
-         const asset_bitasset_data_object& obj = db.get( id.as<asset_bitasset_data_id_type>() );
-         const snapshot_market_type& market = obj.current_feed.settlement_price.get_market();
-         if( _tracked_markets.find( market ) != _tracked_markets.end() )
-            _changed_markets.insert( market );
       }
    }
 }
 
-// when there is a new order, record it
-struct snapshot_new_order_visitor
+struct market_snapshot_operation_visitor
 {
    market_snapshot_plugin&    _plugin;
    const fc::time_point_sec   _now;
    const operation_result&    _op_result;
 
-   snapshot_new_order_visitor( market_snapshot_plugin& p, fc::time_point_sec t, const operation_result& r )
+   market_snapshot_operation_visitor( market_snapshot_plugin& p,
+                                      fc::time_point_sec t,
+                                      const operation_result& r )
    :_plugin(p),_now(t),_op_result(r) {}
 
-   typedef void result_type;
+   typedef optional<snapshot_market_type> result_type;
 
    /** do nothing for other operation types */
    template<typename T>
-   void operator()( const T& )const{}
+   result_type operator()( const T& )const{ return result_type(); }
 
-   void operator()( const limit_order_create_operation& op )const
+   result_type operator()( const limit_order_create_operation& op )const
    {
-      dlog( "processing ${op}", ("op",op) );
-      auto& db         = _plugin.database();
+      //dlog( "processing ${op}", ("op",op) );
+      auto& db = _plugin.database();
       const auto& tracked_markets = _plugin.tracked_markets();
       const auto& market = op.get_market();
 
       if( tracked_markets.find( market ) == tracked_markets.end() )
-         return;
+         return result_type();
 
+      // there is a new order, record it
       db.create<market_snapshot_new_order_object>( [&]( market_snapshot_new_order_object& order ){
          order.order_id = _op_result.get<object_id_type>();
          order.seller = op.seller;
@@ -145,11 +126,38 @@ struct snapshot_new_order_visitor
          order.sell_price = op.get_price();
          //idump((order));
       });
+
+      return market;
+   }
+
+   result_type operator()( const limit_order_cancel_operation& op )const
+   {
+      //dlog( "processing ${op}", ("op",op) );
+      auto& db = _plugin.database();
+      const auto& idx = db.get_index_type<market_snapshot_order_index>().indices().get<by_order_id>();
+      const auto p = idx.find( _op_result.get<object_id_type>() );
+      // if the order is in new_order database, the market is tracked
+      if( p != idx.end() )
+         return( p->sell_price.get_market() );
+      else
+         return result_type();
+   }
+
+   result_type operator()( const fill_order_operation& op )const
+   {
+      //dlog( "processing ${op}", ("op",op) );
+      const auto& tracked_markets = _plugin.tracked_markets();
+      const auto& market = op.get_market();
+      if( tracked_markets.find( market ) != tracked_markets.end() )
+         return market;
+      else
+         return result_type();
    }
 };
 
 void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
 {
+   //idump(( b.block_num() ));
    if( _tracked_markets.size() == 0 ) return;
 
    graphene::chain::database& db = database();
@@ -165,42 +173,44 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       }
    }*/
 
-   // TODO remove old snapshots from the database
-
-   // TODO remove orders from the database which are too old (disappeared before oldest snapshot)
-
-   //if( b.timestamp <= fc::time_point_sec( 1458752400 ) ) return;
-
-   //if( count > 10000 ) return;
-   if( _changed_markets.size() == 0 ) return;
-
-   // record new orders
+   // check if there is order changed, and record new orders
+   flat_set<snapshot_market_type> changed_markets;
    const vector<optional< operation_history_object > >& hist = db.get_applied_operations();
    idump((hist));
    for( const optional< operation_history_object >& o_op : hist )
    {
       if( o_op.valid() )
-         o_op->op.visit( snapshot_new_order_visitor( _self, b.timestamp, o_op->result ) );
+      {
+         market_snapshot_operation_visitor v( _self, b.timestamp, o_op->result );
+         const optional<snapshot_market_type>& result = o_op->op.visit( v );
+         if( result.valid() )
+            changed_markets.insert( *result );
+      }
    }
 
    // take snapshots
-   for( const snapshot_market_type& m : _changed_markets )
+   for( const auto& m : _tracked_markets )
    {
-      const auto& config = _tracked_markets.at( m );
-      if( b.timestamp < config.begin_time ) continue;
+      const auto& market = m.first;
+      const auto& config = m.second;
 
-      // init key
-      market_snapshot_key key( m.first, m.second, b.timestamp );
+      //TODO remove old snapshots from the database
 
-      // init feed_price
+      if( b.timestamp < config.begin_time )
+      {
+         //TODO erase snapshots before begin_time?
+         continue;
+      }
+
+      // get feed_price
       price feed_price;
       bool found_feed_price = false;
-      const asset_object& quote_obj = m.second( db );
+      const asset_object& quote_obj = config.quote( db );
       if( quote_obj.is_market_issued() )
       {
-         const auto& bid = *quote_obj.bitasset_data_id;
-         const asset_bitasset_data_object& bo = bid( db );
-         if( bo.options.short_backing_asset == m.first )
+         const auto& bitasset_id = *quote_obj.bitasset_data_id;
+         const asset_bitasset_data_object& bo = bitasset_id( db );
+         if( bo.options.short_backing_asset == config.base )
          {
             found_feed_price = true;
             feed_price = bo.current_feed.settlement_price;
@@ -208,18 +218,44 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       }
       if( !found_feed_price )
       {
-         const asset_object& base_obj = m.first( db );
+         const asset_object& base_obj = config.base( db );
          if( base_obj.is_market_issued() )
          {
-            const auto& bid = *base_obj.bitasset_data_id;
-            const asset_bitasset_data_object& bo = bid( db );
-            if( bo.options.short_backing_asset == m.second )
+            const auto& bitasset_id = *base_obj.bitasset_data_id;
+            const asset_bitasset_data_object& bo = bitasset_id( db );
+            if( bo.options.short_backing_asset == config.quote )
             {
                found_feed_price = true;
                feed_price = bo.current_feed.settlement_price;
             }
          }
       }
+
+      // get statistics
+      market_snapshot_statistics_object stat_object;
+      bool new_stat = true;
+      const auto& stat_idx = db.get_index_type<market_snapshot_statistics_index>().indices().get<by_key>();
+      const auto stat_itr = stat_idx.find( market );
+      if( stat_itr != stat_idx.end() )
+      {
+         stat_object = *stat_itr;
+         new_stat = false;
+      }
+
+      // check whether need to take snapshot
+      if( !new_stat && changed_markets.find( market ) == changed_markets.end() )
+      {
+         // if not first snapshot, and no order change
+
+         if( !found_feed_price ) // if feed_price does not apply
+            continue;
+
+         if( feed_price == stat_object.newest_feed_price ) // if feed_price didn't change
+            continue;
+      }
+
+      // init key
+      market_snapshot_key key( config.base, config.quote, b.timestamp );
 
       // init orders
       vector<market_snapshot_order> bids;
@@ -232,8 +268,8 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
 
       if( config.track_bid_orders )
       {
-         auto limit_itr = limit_price_idx.lower_bound(price::max(m.first, m.second));
-         auto limit_end = limit_price_idx.upper_bound(price::min(m.first, m.second));
+         auto limit_itr = limit_price_idx.lower_bound(price::max(config.base, config.quote));
+         auto limit_end = limit_price_idx.upper_bound(price::min(config.base, config.quote));
          while( limit_itr != limit_end )
          {
             market_snapshot_order order( *limit_itr );
@@ -246,8 +282,8 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
 
       if( config.track_ask_orders )
       {
-         auto limit_itr = limit_price_idx.lower_bound(price::max(m.second, m.first));
-         auto limit_end = limit_price_idx.upper_bound(price::min(m.second, m.first));
+         auto limit_itr = limit_price_idx.lower_bound(price::max(config.quote, config.base));
+         auto limit_end = limit_price_idx.upper_bound(price::min(config.quote, config.base));
          while( limit_itr != limit_end )
          {
             market_snapshot_order order( *limit_itr );
@@ -258,6 +294,7 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
          }
       }
 
+      // store snapshot
       db.create<market_snapshot_object>( [&]( market_snapshot_object& mso ){
            mso.key = key;
            mso.feed_price = feed_price;
@@ -266,10 +303,27 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
            idump((mso));
       });
 
-      count++;
+      // store statistics
+      if( new_stat )
+      {
+         db.create<market_snapshot_statistics_object>( [&]( market_snapshot_statistics_object& msso ){
+              msso.market = market;
+              msso.oldest_snapshot_time = b.timestamp;
+              msso.newest_snapshot_time = b.timestamp;
+              msso.newest_feed_price = feed_price;
+              msso.count = 1;
+         });
+      }
+      else
+      {
+         db.modify( stat_object, [&]( market_snapshot_statistics_object& msso ){
+              msso.newest_snapshot_time = b.timestamp;
+              msso.newest_feed_price = feed_price;
+              msso.count += 1;
+         });
+      }
+
    }
-   // clear changed markets
-   _changed_markets.clear();
 }
 
 } // end namespace detail
@@ -296,18 +350,18 @@ void market_snapshot_plugin::plugin_set_program_options(
 {
    cli.add_options()
          ("market-snapshot-options", boost::program_options::value<string>()->default_value("[]"),
-          "Market snapshot options. Syntax: [{base_asset_id,quote_asset_id,start_time,max_seconds,is_track_asks,is_track_bids},...] . Example: [{\"1.3.0\",\"1.3.1\",0,86400,true,true},{\"1.3.0\",\"1.3.2\",\"2016-01-01T00:00:00\",86400*65,false,false}]. For every market, please make sure base_asset_id < quote_asset_id.")
+          "Market snapshot options. Syntax: [{\"base\":base_asset_id,\"quote\":quote_asset_id,\"begin_time\":begin_time,\"max_seconds\":max_seconds,\"track_ask_orders\":is_track_asks,\"track_bid_orders\":is_track_bids},...] . Example: [{\"base\":\"1.3.0\",\"quote\":\"1.3.1\",\"begin_time\":\"2016-03-01T00:00:00\",\"max_seconds\":864000,\"track_ask_orders\":true,\"track_bid_orders\":true},{\"base\":\"1.3.0\",\"quote\":\"1.3.2\",\"begin_time\":\"2016-01-01T00:00:00\",\"max_seconds\":4320000,\"track_ask_orders\":false,\"track_bid_orders\":false}]")
          ;
    cfg.add(cli);
 }
 
 void market_snapshot_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   database().changed_objects.connect( [&]( const vector<object_id_type>& v){ my->update_changed_markets(v); } );
-   // TODO there is a bug which causes the connected funtion not always be called in time, therefore results in a wrong snapshot.
    database().applied_block.connect( [&]( const signed_block& b){ my->take_market_snapshots(b); } );
+   database().changed_objects.connect( [&]( const vector<object_id_type>& v){ my->update_order_index(v); } );
    database().add_index< primary_index< market_snapshot_index  > >();
    database().add_index< primary_index< market_snapshot_order_index  > >();
+   database().add_index< primary_index< market_snapshot_statistics_index  > >();
 
    if( options.count( "market-snapshot-options" ) )
    {
@@ -315,6 +369,11 @@ void market_snapshot_plugin::plugin_initialize(const boost::program_options::var
       vector<market_snapshot_config> v = fc::json::from_string(markets).as< vector<market_snapshot_config> >();
       for( market_snapshot_config& c : v )
       {
+         if( c.base > c.quote )
+         {
+            std::swap( c.base, c.quote );
+            std::swap( c.track_bid_orders, c.track_ask_orders);
+         }
          snapshot_market_type key = std::make_pair( c.base, c.quote );
          my->_tracked_markets.insert( std::make_pair( key, c ) );
       }
