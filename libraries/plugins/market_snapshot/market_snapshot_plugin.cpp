@@ -96,7 +96,9 @@ struct market_snapshot_operation_visitor
    const fc::time_point_sec   _now;
    const operation_result&    _op_result;
 
-   snapshot_new_order_visitor( market_snapshot_plugin& p, fc::time_point_sec t, const operation_result& r )
+   market_snapshot_operation_visitor( market_snapshot_plugin& p,
+                                      fc::time_point_sec t,
+                                      const operation_result& r )
    :_plugin(p),_now(t),_op_result(r) {}
 
    typedef optional<snapshot_market_type> result_type;
@@ -311,7 +313,7 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       }
       else
       {
-         db.modify( *stat_object, [&]( market_snapshot_statistics_object& msso ){
+         db.modify( stat_object, [&]( market_snapshot_statistics_object& msso ){
               msso.newest_snapshot_time = b.timestamp;
               msso.newest_feed_price = feed_price;
               msso.count += 1;

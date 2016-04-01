@@ -178,7 +178,7 @@ typedef multi_index_container<
                                            snapshot_market_type,
                                            &market_snapshot_statistics_object::market > >
    >
-> market_snapshot_statistics_object_multi_index_type;
+> market_snapshot_statistics_multi_index_type;
 
 typedef generic_index<market_snapshot_statistics_object,
                       market_snapshot_statistics_multi_index_type> market_snapshot_statistics_index;
@@ -229,5 +229,5 @@ FC_REFLECT( graphene::market_snapshot::market_snapshot_config,
                     (base)(quote)(begin_time)(max_seconds)(track_ask_orders)(track_bid_orders) )
 FC_REFLECT_DERIVED( graphene::market_snapshot::market_snapshot_statistics_object,
                     (graphene::db::object),
-                    (market)(config)
+                    (market)
                     (oldest_snapshot_time)(newest_snapshot_time)(newest_feed_price)(count) )
