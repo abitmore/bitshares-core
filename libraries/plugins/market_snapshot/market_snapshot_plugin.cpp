@@ -63,6 +63,7 @@ class market_snapshot_plugin_impl
       market_snapshot_plugin&          _self;
       snapshot_markets_config_type     _tracked_markets;
    private:
+      vector<object_id_type>           _removed_orders;
 };
 
 
@@ -83,10 +84,10 @@ void market_snapshot_plugin_impl::update_order_index( const vector<object_id_typ
          {
             const auto& idx = db.get_index_type<market_snapshot_order_index>().indices().get<by_order_id>();
             const auto p = idx.find( id );
-            if( p != idx.end() ) // found it, remove it
+            if( p != idx.end() ) // found it, mark it to be removed
             {
                dlog("removing order ${o}",("o",*p));
-               db.remove( *p );
+               _removed_orders.emplace_back( p->id );
             }
          }
       }
@@ -175,6 +176,16 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
          db.remove( *(order_itr++) );
       }
    }*/
+
+   // remove old orders
+   if( _removed_orders.size() > 0 )
+   {
+      for( const auto& id : _removed_orders )
+      {
+         db.remove( db.get_object( id ) );
+      }
+      _removed_orders.clear();
+   }
 
    // check if there is order changed, and record new orders
    flat_set<snapshot_market_type> changed_markets;
