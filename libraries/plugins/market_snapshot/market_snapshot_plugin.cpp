@@ -256,7 +256,7 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       const auto& limit_order_idx = db.get_index_type<limit_order_index>();
       const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
       const auto& snapshot_order_idx = db.get_index_type<market_snapshot_order_index>()
-                                         .indices().get<by_id>();
+                                         .indices().get<by_order_id>();
 
       if( config.track_bid_orders )
       {
