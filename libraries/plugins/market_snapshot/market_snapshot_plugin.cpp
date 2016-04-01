@@ -179,7 +179,7 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
    // check if there is order changed, and record new orders
    flat_set<snapshot_market_type> changed_markets;
    const vector<optional< operation_history_object > >& hist = db.get_applied_operations();
-   idump((hist));
+   if( hist.size() > 0 ) { idump((hist)); }
    for( const optional< operation_history_object >& o_op : hist )
    {
       if( o_op.valid() )
