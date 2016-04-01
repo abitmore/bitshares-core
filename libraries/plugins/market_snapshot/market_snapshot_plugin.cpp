@@ -135,7 +135,7 @@ struct market_snapshot_operation_visitor
       //dlog( "processing ${op}", ("op",op) );
       auto& db = _plugin.database();
       const auto& idx = db.get_index_type<market_snapshot_order_index>().indices().get<by_order_id>();
-      const auto p = idx.find( _op_result.get<object_id_type>() );
+      const auto p = idx.find( op.order );
       // if the order is in new_order database, the market is tracked
       if( p != idx.end() )
          return( p->sell_price.get_market() );
