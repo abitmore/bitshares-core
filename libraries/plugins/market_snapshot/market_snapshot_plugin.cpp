@@ -360,7 +360,8 @@ void market_snapshot_plugin::plugin_set_program_options(
 void market_snapshot_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    database().applied_block.connect( [&]( const signed_block& b){ my->take_market_snapshots(b); } );
-   database().changed_objects.connect( [&]( const vector<object_id_type>& v){ my->update_order_index(v); } );
+   //FIXME changed_objects signal relies on _undo_db which is disabled while replaying
+   //database().changed_objects.connect( [&]( const vector<object_id_type>& v){ my->update_order_index(v); } );
    database().add_index< primary_index< market_snapshot_index  > >();
    database().add_index< primary_index< market_snapshot_order_index  > >();
    database().add_index< primary_index< market_snapshot_statistics_index  > >();
