@@ -235,9 +235,10 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       bool new_stat = ( stat_itr == stat_idx.end() );
 
       // check whether need to take snapshot
-      if( !new_stat && changed_markets.find( market ) == changed_markets.end() )
+      if( !new_stat && ( changed_markets.find( market ) == changed_markets.end()
+                         || ( !config.track_ask_orders && !config.track_bid_orders ) ) )
       {
-         // if not first snapshot, and no order change
+         // if not first snapshot, and no order change or not tracking orders
 
          if( !found_feed_price ) // if feed_price does not apply
             continue;
