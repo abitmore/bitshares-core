@@ -63,7 +63,6 @@ class market_snapshot_plugin_impl
       market_snapshot_plugin&          _self;
       snapshot_markets_config_type     _tracked_markets;
    private:
-      vector<object_id_type>           _removed_orders;
 };
 
 
@@ -84,10 +83,10 @@ void market_snapshot_plugin_impl::update_order_index( const vector<object_id_typ
          {
             const auto& idx = db.get_index_type<market_snapshot_order_index>().indices().get<by_order_id>();
             const auto p = idx.find( id );
-            if( p != idx.end() ) // found it, mark it to be removed
+            if( p != idx.end() ) // found it, remove it
             {
                dlog("removing order ${o}",("o",*p));
-               _removed_orders.emplace_back( p->id );
+               db.remove( *p );
             }
          }
       }
@@ -177,16 +176,6 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       }
    }*/
 
-   // remove old orders
-   if( _removed_orders.size() > 0 )
-   {
-      for( const auto& id : _removed_orders )
-      {
-         db.remove( db.get_object( id ) );
-      }
-      _removed_orders.clear();
-   }
-
    // check if there is order changed, and record new orders
    flat_set<snapshot_market_type> changed_markets;
    const vector<optional< operation_history_object > >& hist = db.get_applied_operations();
@@ -251,9 +240,10 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       bool new_stat = ( stat_itr == stat_idx.end() );
 
       // check whether need to take snapshot
-      if( !new_stat && changed_markets.find( market ) == changed_markets.end() )
+      if( !new_stat && ( changed_markets.find( market ) == changed_markets.end()
+                         || ( !config.track_ask_orders && !config.track_bid_orders ) ) )
       {
-         // if not first snapshot, and no order change
+         // if not first snapshot, and no order change or not tracking orders
 
          if( !found_feed_price ) // if feed_price does not apply
             continue;
@@ -368,7 +358,8 @@ void market_snapshot_plugin::plugin_set_program_options(
 void market_snapshot_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    database().applied_block.connect( [&]( const signed_block& b){ my->take_market_snapshots(b); } );
-   database().changed_objects.connect( [&]( const vector<object_id_type>& v){ my->update_order_index(v); } );
+   //FIXME changed_objects signal relies on _undo_db which is disabled while replaying
+   //database().changed_objects.connect( [&]( const vector<object_id_type>& v){ my->update_order_index(v); } );
    database().add_index< primary_index< market_snapshot_index  > >();
    database().add_index< primary_index< market_snapshot_order_index  > >();
    database().add_index< primary_index< market_snapshot_statistics_index  > >();
