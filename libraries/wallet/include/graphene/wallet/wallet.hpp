@@ -165,7 +165,7 @@ struct wallet_data
    /// @return true if the account was newly inserted; false if it was only updated
    bool update_account(const account_object& acct)
    {
-      auto& idx = my_accounts.get<by_id>();
+      auto& idx = my_accounts.get<graphene::chain::by_id>();
       auto itr = idx.find(acct.get_id());
       if( itr != idx.end() )
       {
