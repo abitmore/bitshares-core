@@ -480,6 +480,30 @@ namespace graphene { namespace app {
        return result;
     } FC_CAPTURE_AND_RETHROW( (a)(b)(bucket_seconds)(start)(end) ) }
     
+    vector<market_snapshot_object> history_api::get_market_snapshots( asset_id_type a, asset_id_type b,
+                                                           fc::time_point_sec start, fc::time_point_sec end )const
+    { try {
+       FC_ASSERT(_app.chain_database());
+       const auto& db = *_app.chain_database();
+       vector<market_snapshot_object> result;
+       //result.reserve(200);
+
+       if( a > b ) std::swap(a,b);
+
+       const auto& bidx = db.get_index_type<market_snapshot_index>();
+       const auto& by_key_idx = bidx.indices().get<by_key>();
+
+       auto itr = by_key_idx.lower_bound( market_snapshot_key( a, b, start ) );
+       while( itr != by_key_idx.end() && itr->key.snapshot_time < end )
+       {
+          if( !(itr->key.base == a && itr->key.quote == b) )
+            break;
+          result.push_back(*itr);
+          ++itr;
+       }
+       return result;
+    } FC_CAPTURE_AND_RETHROW( (a)(b)(start)(end) ) }
+
     crypto_api::crypto_api(){};
     
     blind_signature crypto_api::blind_sign( const extended_private_key_type& key, const blinded_hash& hash, int i )

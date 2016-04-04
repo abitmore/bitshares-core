@@ -29,6 +29,7 @@
 #include <graphene/chain/protocol/confidential.hpp>
 
 #include <graphene/market_history/market_history_plugin.hpp>
+#include <graphene/market_snapshot/market_snapshot_plugin.hpp>
 
 #include <graphene/debug_witness/debug_api.hpp>
 
@@ -49,6 +50,7 @@
 namespace graphene { namespace app {
    using namespace graphene::chain;
    using namespace graphene::market_history;
+   using namespace graphene::market_snapshot;
    using namespace fc::ecc;
    using namespace std;
 
@@ -114,6 +116,9 @@ namespace graphene { namespace app {
          vector<bucket_object> get_market_history( asset_id_type a, asset_id_type b, uint32_t bucket_seconds,
                                                    fc::time_point_sec start, fc::time_point_sec end )const;
          flat_set<uint32_t> get_market_history_buckets()const;
+         /** return the snapshots whose time >= start and < end */
+         vector<market_snapshot_object> get_market_snapshots( asset_id_type a, asset_id_type b,
+                                                   fc::time_point_sec start, fc::time_point_sec end )const;
       private:
            application& _app;
    };
@@ -316,6 +321,7 @@ FC_API(graphene::app::history_api,
        (get_fill_order_history)
        (get_market_history)
        (get_market_history_buckets)
+       (get_market_snapshots)
      )
 FC_API(graphene::app::network_broadcast_api,
        (broadcast_transaction)
