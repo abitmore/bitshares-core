@@ -565,8 +565,8 @@ public:
    }
    account_object get_account(account_id_type id) const
    {
-      if( _wallet.my_accounts.get<by_id>().count(id) )
-         return *_wallet.my_accounts.get<by_id>().find(id);
+      if( _wallet.my_accounts.get<graphene::chain::by_id>().count(id) )
+         return *_wallet.my_accounts.get<graphene::chain::by_id>().find(id);
       auto rec = _remote_db->get_accounts({id}).front();
       FC_ASSERT(rec);
       return *rec;
