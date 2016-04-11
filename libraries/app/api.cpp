@@ -519,7 +519,7 @@ namespace graphene { namespace app {
 
        auto start_key = market_snapshot_key( a, b, start );
        auto itr = by_key_idx.upper_bound( start_key );
-       if( itr != by_key_idx.end() && itr->key != start_key )
+       if( itr != by_key_idx.end() && !( itr->key == start_key ) )
        {
           auto my_start_item = *itr;
           my_start_item.key = start_key;
