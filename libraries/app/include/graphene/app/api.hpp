@@ -325,6 +325,7 @@ FC_API(graphene::app::history_api,
        (get_market_history)
        (get_market_history_buckets)
        (get_market_snapshots)
+       (get_market_snapshots_fill_start)
      )
 FC_API(graphene::app::network_broadcast_api,
        (broadcast_transaction)
