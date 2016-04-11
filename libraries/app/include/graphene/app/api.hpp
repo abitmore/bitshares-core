@@ -119,6 +119,9 @@ namespace graphene { namespace app {
          /** return the snapshots whose time >= start and < end */
          vector<market_snapshot_object> get_market_snapshots( asset_id_type a, asset_id_type b,
                                                    fc::time_point_sec start, fc::time_point_sec end )const;
+         /** return the snapshots whose time >= start and < end, if no snapshot at start, fill one */
+         vector<market_snapshot_object> get_market_snapshots_fill_start( asset_id_type a, asset_id_type b,
+                                                   fc::time_point_sec start, fc::time_point_sec end )const;
       private:
            application& _app;
    };
