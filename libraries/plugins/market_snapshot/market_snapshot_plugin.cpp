@@ -208,30 +208,35 @@ void market_snapshot_plugin_impl::take_market_snapshots( const signed_block& b )
       // get feed_price
       price feed_price;
       bool found_feed_price = false;
-      const asset_object& quote_obj = config.quote( db );
-      if( quote_obj.is_market_issued() )
-      {
-         const auto& bitasset_id = *quote_obj.bitasset_data_id;
-         const asset_bitasset_data_object& bo = bitasset_id( db );
-         if( bo.options.short_backing_asset == config.base )
+      try {
+         const asset_object& quote_obj = config.quote( db );
+         if( quote_obj.is_market_issued() )
          {
-            found_feed_price = true;
-            feed_price = bo.current_feed.settlement_price;
-         }
-      }
-      if( !found_feed_price )
-      {
-         const asset_object& base_obj = config.base( db );
-         if( base_obj.is_market_issued() )
-         {
-            const auto& bitasset_id = *base_obj.bitasset_data_id;
+            const auto& bitasset_id = *quote_obj.bitasset_data_id;
             const asset_bitasset_data_object& bo = bitasset_id( db );
-            if( bo.options.short_backing_asset == config.quote )
+            if( bo.options.short_backing_asset == config.base )
             {
                found_feed_price = true;
                feed_price = bo.current_feed.settlement_price;
             }
          }
+         if( !found_feed_price )
+         {
+            const asset_object& base_obj = config.base( db );
+            if( base_obj.is_market_issued() )
+            {
+               const auto& bitasset_id = *base_obj.bitasset_data_id;
+               const asset_bitasset_data_object& bo = bitasset_id( db );
+               if( bo.options.short_backing_asset == config.quote )
+               {
+                  found_feed_price = true;
+                  feed_price = bo.current_feed.settlement_price;
+               }
+            }
+         }
+      } catch( ... ) {
+         // perhaps one of the assets doesn't exist
+         continue;
       }
 
       // get statistics
