@@ -518,13 +518,25 @@ namespace graphene { namespace app {
        const auto& by_key_idx = bidx.indices().get<graphene::market_snapshot::by_key>();
 
        auto start_key = market_snapshot_key( a, b, start );
-       auto itr = by_key_idx.upper_bound( start_key );
+       auto itr = by_key_idx.lower_bound( start_key );
        if( itr != by_key_idx.end() && !( itr->key == start_key ) )
        {
-          auto my_start_item = *itr;
-          my_start_item.key = start_key;
-          result.push_back( my_start_item );
-          ++itr;
+          // The first snapshot is not exactly at start point, try to find previous snapshot
+          if( itr != by_key_idx.begin() )
+          {
+            // move itr back by 1
+            --itr;
+            // check if it's same market
+            if( itr->key.base == a && itr->key.quote == b )
+            {
+               // Found previous snapshot
+               auto my_start_item = *itr;
+               my_start_item.key = start_key;
+               result.push_back( my_start_item );
+            }
+            // move itr forward by 1
+            ++itr;
+          }
        }
        while( itr != by_key_idx.end() && itr->key.snapshot_time < end )
        {
