@@ -68,7 +68,7 @@ struct market_snapshot_key
    }
    friend bool operator == ( const market_snapshot_key& a, const market_snapshot_key& b )
    {
-      return std::tie( a.base, a.quote, b.snapshot_time ) == std::tie( b.base, b.quote, b.snapshot_time );
+      return std::tie( a.base, a.quote, a.snapshot_time ) == std::tie( b.base, b.quote, b.snapshot_time );
    }
 };
 struct market_snapshot_order
