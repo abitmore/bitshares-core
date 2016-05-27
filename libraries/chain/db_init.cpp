@@ -337,6 +337,27 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       });
    assert( asset_id_type(core_asset.id) == asset().asset_id );
    assert( get_balance(account_id_type(), asset_id_type()) == asset(dyn_asset.current_supply) );
+   // Create basic currency asset
+   const asset_dynamic_data_object& dyn_asset_basic_currency =
+      create<asset_dynamic_data_object>([&](asset_dynamic_data_object& a) {
+         a.current_supply = 0;
+      });
+   const asset_object& basic_currency_asset =
+     create<asset_object>( [&]( asset_object& a ) {
+         a.symbol = GRAPHENE_BASIC_CURRENCY_SYMBOL;
+         a.options.max_supply = GRAPHENE_MAX_SHARE_SUPPLY;
+         a.precision = GRAPHENE_BLOCKCHAIN_PRECISION_DIGITS;
+         a.options.flags = 0;
+         a.options.issuer_permissions = 0;
+         a.issuer = GRAPHENE_COMMITTEE_ACCOUNT;
+         a.options.core_exchange_rate.base.amount = 1;
+         a.options.core_exchange_rate.base.asset_id = 0;
+         a.options.core_exchange_rate.quote.amount = 1;
+         a.options.core_exchange_rate.quote.asset_id = 0;
+         a.dynamic_asset_data_id = dyn_asset.id;
+      });
+   assert( asset_id_type(core_asset.id) == asset().asset_id );
+   assert( get_balance(account_id_type(), asset_id_type()) == asset(dyn_asset.current_supply) );
    // Create more special assets
    while( true )
    {
