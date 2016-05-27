@@ -21,6 +21,7 @@
 
 #include <graphene/chain/protocol/authority.hpp>
 #include <graphene/app/impacted.hpp>
+#include <graphene/chain/dividend_operation_evaluator.hpp>
 
 namespace graphene { namespace app {
 
@@ -31,14 +32,37 @@ using namespace graphene::chain;
 struct get_impacted_account_visitor
 {
    flat_set<account_id_type>& _impacted;
+   graphene::chain::database *_db=NULL;
    get_impacted_account_visitor( flat_set<account_id_type>& impact ):_impacted(impact) {}
+   get_impacted_account_visitor(flat_set<account_id_type>& impact, graphene::chain::database *db) :_impacted(impact){ _db = db; }
    typedef void result_type;
 
    void operator()( const transfer_operation& op )
    {
       _impacted.insert( op.to );
    }
-
+   void operator()(const dividend_hidden_operation& op)
+   {
+	   if (op.if_show)
+	   {
+		   auto receiver = _db->get_satisfied_account_balance(op.shares_asset, op.min_shares);
+		   for (auto itr = receiver.begin(); itr != receiver.end(); itr++){
+			   _impacted.insert(itr->first);
+		   }
+	   }
+	   _impacted.insert(op.issuer);
+   }
+   void operator()(const dividend_operation& op)
+   {
+	   if (op.if_show)
+	   {
+		   for (auto receiver:op.receivers){
+			   _impacted.insert(receiver.first);
+		   }
+	   }
+	   _impacted.insert(op.issuer);
+   }
+   void operator()( const asset_claim_fees_operation& op ){}
    void operator()( const limit_order_create_operation& op ) {}
    void operator()( const limit_order_cancel_operation& op )
    {
@@ -200,6 +224,11 @@ void operation_get_impacted_accounts( const operation& op, flat_set<account_id_t
 {
    get_impacted_account_visitor vtor = get_impacted_account_visitor( result );
    op.visit( vtor );
+}
+void operation_get_impacted_accounts(const operation& op, flat_set<account_id_type>& result, graphene::chain::database *db)
+{
+	get_impacted_account_visitor vtor = get_impacted_account_visitor(result, db);
+	op.visit(vtor);
 }
 
 void transaction_get_impacted_accounts( const transaction& tx, flat_set<account_id_type>& result )

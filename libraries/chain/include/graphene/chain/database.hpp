@@ -70,7 +70,8 @@ namespace graphene { namespace chain {
             skip_merkle_check           = 1 << 7,  ///< used while reindexing
             skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
-            skip_witness_schedule_check = 1 << 10  ///< used whiel reindexing
+            skip_witness_schedule_check = 1 << 10,  ///< used while reindexing
+            skip_validate               = 1 << 11 ///< used prior to checkpoint, skips validate() call on transaction
          };
 
          /**
@@ -163,7 +164,7 @@ namespace graphene { namespace chain {
           */
          uint32_t  push_applied_operation( const operation& op );
          void      set_applied_operation_result( uint32_t op_id, const operation_result& r );
-         const vector<operation_history_object>& get_applied_operations()const;
+         const vector<optional< operation_history_object > >& get_applied_operations()const;
 
          string to_pretty_string( const asset& a )const;
 
@@ -288,7 +289,12 @@ namespace graphene { namespace chain {
          asset get_balance(account_id_type owner, asset_id_type asset_id)const;
          /// This is an overloaded method.
          asset get_balance(const account_object& owner, const asset_object& asset_obj)const;
-
+		 /// This is an overloaded method.
+		 vector<pair<account_id_type, share_type>> get_balance(asset_id_type asset_id)const;
+		 ///get the account and share that hold asset_id larger than min_amount
+		 vector<pair<account_id_type, share_type>> get_satisfied_account_balance(asset_id_type asset_id, share_type min_amount)const;
+		 ///get the how many account that hold asset_id larger than min_amount
+		 uint64_t get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
          /**
           * @brief Adjust a particular account's balance in a given asset by a delta
           * @param account ID of account whose balance should be adjusted
@@ -472,7 +478,7 @@ namespace graphene { namespace chain {
           * order they occur and is cleared after the applied_block signal is
           * emited.
           */
-         vector<operation_history_object>  _applied_ops;
+         vector<optional<operation_history_object> >  _applied_ops;
 
          uint32_t                          _current_block_num    = 0;
          uint16_t                          _current_trx_in_block = 0;

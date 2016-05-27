@@ -24,7 +24,7 @@
 #include <fc/bitutil.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <algorithm>
-
+//#include <fc\crypto\sha256.hpp>
 namespace graphene { namespace chain {
 
 digest_type processed_transaction::merkle_digest()const
@@ -76,6 +76,7 @@ signature_type graphene::chain::signed_transaction::sign(const private_key_type&
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
    fc::raw::pack( enc, *this );
+   //idump((enc));
    return key.sign_compact(enc.result());
 }
 
@@ -155,6 +156,7 @@ struct sign_state
 
       bool check_authority( account_id_type id )
       {
+		  idump((approved_by));
          if( approved_by.find(id) != approved_by.end() ) return true;
          return check_authority( get_active(id) );
       }
@@ -165,6 +167,7 @@ struct sign_state
        */
       bool check_authority( const authority* au, uint32_t depth = 0 )
       {
+		  idump((*au));
          if( au == nullptr ) return false;
          const authority& auth = *au;
 
@@ -260,6 +263,8 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
                        invalid_committee_approval, "Committee account may only propose transactions" );
 
    sign_state s(sigs,get_active);
+   //idump((s));
+   idump((sigs));
    s.max_recursion = max_recursion_depth;
    for( auto& id : active_aprovals )
       s.approved_by.insert( id );
@@ -296,7 +301,10 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
 
 flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
 { try {
+	auto ops = this->operations;
+	idump((ops));
    auto d = sig_digest( chain_id );
+
    flat_set<public_key_type> result;
    for( const auto&  sig : signatures )
    {
@@ -305,7 +313,9 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
          tx_duplicate_sig,
          "Duplicate Signature detected" );
    }
+   idump((chain_id)(d)(signatures)(result));
    return result;
+   
 } FC_CAPTURE_AND_RETHROW() }
 
 

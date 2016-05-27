@@ -34,6 +34,7 @@
 #include <graphene/chain/market_evaluator.hpp>
 #include <graphene/chain/operation_history_object.hpp>
 #include <graphene/chain/proposal_object.hpp>
+#include <graphene/chain/equal_object.hpp>
 #include <graphene/chain/worker_evaluator.hpp>
 #include <graphene/chain/witness_object.hpp>
 #include <graphene/chain/confidential_evaluator.hpp>
@@ -120,6 +121,13 @@ class database_api
        * @brief used to fetch an individual transaction.
        */
       processed_transaction get_transaction( uint32_t block_num, uint32_t trx_in_block )const;
+
+      /**
+       * If the transaction has not expired, this method will return the transaction for the given ID or
+       * it will return NULL if it is not known.  Just because it is not known does not mean it wasn't
+       * included in the blockchain.
+       */
+      optional<signed_transaction> get_recent_transaction_by_id( const transaction_id_type& id )const;
 
       /////////////
       // Globals //
@@ -232,6 +240,13 @@ class database_api
        * @brief Get the total number of accounts registered with the blockchain
        */
       uint64_t get_account_count()const;
+	  /**
+	   * @brief Get quantity of satisfied shareholder that have min amount of asset while dividend
+	   * @param asset_id id of asset
+	   * @param min_amount the satisfied holder should hold Min amount of this asset
+	   */
+	  uint64_t get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
+	  vector <pair<account_id_type, share_type>> get_satisfied_account_balance(asset_id_type asset_id, share_type limited_amount)const;
 
       ////////////
       // Assets //
@@ -440,7 +455,7 @@ class database_api
        *  For each operation calculate the required fee in the specified asset type.  If the asset type does
        *  not have a valid core_exchange_rate
        */
-      vector<asset> get_required_fees( const vector<operation>& ops, asset_id_type id )const;
+      vector< fc::variant > get_required_fees( const vector<operation>& ops, asset_id_type id )const;
 
       ///////////////////////////
       // Proposed transactions //
@@ -459,7 +474,13 @@ class database_api
        *  @return the set of blinded balance objects by commitment ID
        */
       vector<blinded_balance_object> get_blinded_balances( const flat_set<commitment_type>& commitments )const;
-
+	  //////////////////////
+	  // policy //
+	  //////////////////////
+	  /**
+	  *  @return the all exist equal_bit object
+	  */
+	  vector<equal_bit_object> get_equal_bit()const;
    private:
       std::shared_ptr< database_api_impl > my;
 };
@@ -480,6 +501,7 @@ FC_API(graphene::app::database_api,
    (get_block_header)
    (get_block)
    (get_transaction)
+   (get_recent_transaction_by_id)
 
    // Globals
    (get_chain_properties)
@@ -506,6 +528,8 @@ FC_API(graphene::app::database_api,
    (get_balance_objects)
    (get_vested_balances)
    (get_vesting_balances)
+   (get_satisfied_holder)
+   (get_satisfied_account_balance)
 
    // Assets
    (get_assets)
@@ -551,4 +575,6 @@ FC_API(graphene::app::database_api,
 
    // Blinded balances
    (get_blinded_balances)
+
+   (get_equal_bit)
 )

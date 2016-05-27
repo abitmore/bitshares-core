@@ -149,20 +149,22 @@ namespace detail {
          else
          {
             vector<string> seeds = {
-               "faucet.bitshares.org:1776",
-               "bitshares.openledger.info:1776",
-               "blocktrades.us:1776",
-               "seed04.bitsharesnodes.com:1776", // thom
-               "seed05.bitsharesnodes.com:1776", // thom
-               "seed06.bitsharesnodes.com:1776", // thom
-               "seed07.bitsharesnodes.com:1776", // thom
-               "128.199.131.4:1777", // cube 
-               "54.85.252.77:39705", // lafona
-               "104.236.144.84:1777", // puppies
-               "40.127.190.171:1777", // betax
-               "185.25.22.21:1776", // liondani (greece)
-               "23.95.43.126:50696", // iHashFury
-               "109.73.172.144:50696" // iHashFury
+               //"faucet.bitshares.org:1776",
+               //"bitshares.openledger.info:1776",
+               //"114.92.254.159:62015",
+               //"seed.blocktrades.us:1776",
+               //"seed04.bitsharesnodes.com:1776", // thom
+               //"seed05.bitsharesnodes.com:1776", // thom
+               //"seed06.bitsharesnodes.com:1776", // thom
+              // "seed07.bitsharesnodes.com:1776", // thom
+               //"128.199.131.4:1777", // cube 
+               //"54.85.252.77:39705", // lafona
+               //"104.236.144.84:1777", // puppies
+               //"40.127.190.171:1777", // betax
+               //"185.25.22.21:1776", // liondani (greece)
+               //"23.95.43.126:50696", // iHashFury
+               //"109.73.172.144:50696" // iHashFury
+               //127.0.0.1:1776
             };
             for( const string& endpoint_string : seeds )
             {
@@ -352,9 +354,47 @@ namespace detail {
          {
             ilog("Replaying blockchain on user request.");
             _chain_db->reindex(_data_dir/"blockchain", initial_state());
-         } else if( clean )
-            _chain_db->open(_data_dir / "blockchain", initial_state);
-         else {
+         } else if( clean ) {
+
+            auto is_new = [&]() -> bool
+            {
+               // directory doesn't exist
+               if( !fc::exists( _data_dir ) )
+                  return true;
+               // if directory exists but is empty, return true; else false.
+               return ( fc::directory_iterator( _data_dir ) == fc::directory_iterator() );
+            };
+
+            auto is_outdated = [&]() -> bool
+            {
+               if( !fc::exists( _data_dir / "db_version" ) )
+                  return true;
+               std::string version_str;
+               fc::read_file_contents( _data_dir / "db_version", version_str );
+               return (version_str != GRAPHENE_CURRENT_DB_VERSION);
+            };
+            if( !is_new() && is_outdated() ) 
+            {
+               ilog("Replaying blockchain due to version upgrade");
+
+               fc::remove_all( _data_dir / "db_version" );
+               _chain_db->reindex(_data_dir / "blockchain", initial_state());
+
+               // doing this down here helps ensure that DB will be wiped
+               // if any of the above steps were interrupted on a previous run
+               if( !fc::exists( _data_dir / "db_version" ) )
+               {
+                  std::ofstream db_version(
+                     (_data_dir / "db_version").generic_string().c_str(),
+                     std::ios::out | std::ios::binary | std::ios::trunc );
+                  std::string version_string = GRAPHENE_CURRENT_DB_VERSION;
+                  db_version.write( version_string.c_str(), version_string.size() );
+                  db_version.close();
+               }
+            } else {
+              _chain_db->open(_data_dir / "blockchain", initial_state);
+            }
+         } else {
             wlog("Detected unclean shutdown. Replaying blockchain...");
             _chain_db->reindex(_data_dir / "blockchain", initial_state());
          }
@@ -775,7 +815,7 @@ namespace detail {
           }
           while (low_block_num <= high_block_num);
 
-          idump((synopsis));
+          //idump((synopsis));
           return synopsis;
       } FC_CAPTURE_AND_RETHROW() }
 

@@ -31,6 +31,8 @@
 
 #include <cctype>
 
+#define GET_REQUIRED_FEES_MAX_RECURSION 4
+
 namespace graphene { namespace app {
 
 class database_api_impl;
@@ -73,13 +75,15 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       vector<optional<account_object>> lookup_account_names(const vector<string>& account_names)const;
       map<string,account_id_type> lookup_accounts(const string& lower_bound_name, uint32_t limit)const;
       uint64_t get_account_count()const;
+	  uint64_t get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const;
+	  vector <pair<account_id_type, share_type>> get_satisfied_account_balance(asset_id_type asset_id,share_type limited_amount)const;
 
       // Balances
       vector<asset> get_account_balances(account_id_type id, const flat_set<asset_id_type>& assets)const;
       vector<asset> get_named_account_balances(const std::string& name, const flat_set<asset_id_type>& assets)const;
       vector<balance_object> get_balance_objects( const vector<address>& addrs )const;
       vector<asset> get_vested_balances( const vector<balance_id_type>& objs )const;
-      vector<vesting_balance_object> get_vesting_balances( account_id_type account_id )const;
+	  vector<vesting_balance_object> get_vesting_balances(account_id_type account_id)const;
 
       // Assets
       vector<optional<asset_object>> get_assets(const vector<asset_id_type>& asset_ids)const;
@@ -116,7 +120,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       bool verify_authority( const signed_transaction& trx )const;
       bool verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const;
       processed_transaction validate_transaction( const signed_transaction& trx )const;
-      vector<asset> get_required_fees( const vector<operation>& ops, asset_id_type id )const;
+      vector< fc::variant > get_required_fees( const vector<operation>& ops, asset_id_type id )const;
 
       // Proposed transactions
       vector<proposal_object> get_proposed_transactions( account_id_type id )const;
@@ -124,6 +128,8 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       // Blinded balances
       vector<blinded_balance_object> get_blinded_balances( const flat_set<commitment_type>& commitments )const;
 
+	  //policy
+	  vector<equal_bit_object> get_equal_bit(uint8_t max=100)const;
    //private:
       template<typename T>
       void subscribe_to_item( const T& i )const
@@ -329,6 +335,15 @@ optional<signed_block> database_api_impl::get_block(uint32_t block_num)const
 processed_transaction database_api::get_transaction( uint32_t block_num, uint32_t trx_in_block )const
 {
    return my->get_transaction( block_num, trx_in_block );
+}
+
+optional<signed_transaction> database_api::get_recent_transaction_by_id( const transaction_id_type& id )const
+{
+   try {
+      return my->_db.get_recent_transaction( id );
+   } catch ( ... ) {
+      return optional<signed_transaction>();
+   }
 }
 
 processed_transaction database_api_impl::get_transaction(uint32_t block_num, uint32_t trx_num)const
@@ -670,6 +685,14 @@ uint64_t database_api_impl::get_account_count()const
 {
    return _db.get_index_type<account_index>().indices().size();
 }
+uint64_t database_api::get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const
+{
+	return my->get_satisfied_holder(asset_id, min_amount);
+}
+uint64_t database_api_impl::get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const
+{
+	return _db.get_satisfied_holder(asset_id, min_amount);
+}
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
@@ -703,6 +726,7 @@ vector<asset> database_api_impl::get_account_balances(account_id_type acnt, cons
 
    return result;
 }
+
 
 vector<asset> database_api::get_named_account_balances(const std::string& name, const flat_set<asset_id_type>& assets)const
 {
@@ -745,7 +769,13 @@ vector<balance_object> database_api_impl::get_balance_objects( const vector<addr
    }
    FC_CAPTURE_AND_RETHROW( (addrs) )
 }
+vector <pair<account_id_type, share_type>> database_api::get_satisfied_account_balance(asset_id_type asset_id, share_type limited_amount)const {
+	return std::move(my->get_satisfied_account_balance(asset_id, limited_amount));
+}
+vector <pair<account_id_type, share_type>> database_api_impl::get_satisfied_account_balance(asset_id_type asset_id, share_type limited_amount)const {
+	return std::move(_db.get_satisfied_account_balance(asset_id, limited_amount));
 
+}
 vector<asset> database_api::get_vested_balances( const vector<balance_id_type>& objs )const
 {
    return my->get_vested_balances( objs );
@@ -974,6 +1004,17 @@ void database_api_impl::unsubscribe_from_market(asset_id_type a, asset_id_type b
    _market_subscriptions.erase(std::make_pair(a,b));
 }
 
+vector<equal_bit_object> database_api_impl::get_equal_bit(uint8_t max=100)const{
+	vector<equal_bit_object> result;
+	auto& index = _db.get_index_type<equal_bit_index>().indices().get<by_id>();
+	uint8_t i = 0;
+	for (auto itr = index.begin() ;itr != index.end() && i < max; itr++)
+	{
+		result.push_back(*itr);
+		i++;
+	}
+	return result;
+}
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Witnesses                                                        //
@@ -1310,6 +1351,9 @@ bool database_api::verify_account_authority( const string& name_or_id, const fla
 {
    return my->verify_account_authority( name_or_id, signers );
 }
+vector<equal_bit_object> database_api::get_equal_bit()const{
+	return my->get_equal_bit();
+}
 
 bool database_api_impl::verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& keys )const
 {
@@ -1346,18 +1390,86 @@ processed_transaction database_api_impl::validate_transaction( const signed_tran
    return _db.validate_transaction(trx);
 }
 
-vector<asset> database_api::get_required_fees( const vector<operation>& ops, asset_id_type id )const
+vector< fc::variant > database_api::get_required_fees( const vector<operation>& ops, asset_id_type id )const
 {
    return my->get_required_fees( ops, id );
 }
 
-vector<asset> database_api_impl::get_required_fees( const vector<operation>& ops, asset_id_type id )const
+/**
+ * Container method for mutually recursive functions used to
+ * implement get_required_fees() with potentially nested proposals.
+ */
+struct get_required_fees_helper
 {
-   vector<asset> result;
+   get_required_fees_helper(
+      const fee_schedule& _current_fee_schedule,
+      const price& _core_exchange_rate,
+      uint32_t _max_recursion
+      )
+      : current_fee_schedule(_current_fee_schedule),
+        core_exchange_rate(_core_exchange_rate),
+        max_recursion(_max_recursion)
+   {}
+
+   fc::variant set_op_fees( operation& op )
+   {
+      if( op.which() == operation::tag<proposal_create_operation>::value )
+      {
+         return set_proposal_create_op_fees( op );
+      }
+      else
+      {
+         asset fee = current_fee_schedule.set_fee( op, core_exchange_rate );
+         fc::variant result;
+         fc::to_variant( fee, result );
+         return result;
+      }
+   }
+
+   fc::variant set_proposal_create_op_fees( operation& proposal_create_op )
+   {
+      proposal_create_operation& op = proposal_create_op.get<proposal_create_operation>();
+      std::pair< asset, fc::variants > result;
+      for( op_wrapper& prop_op : op.proposed_ops )
+      {
+         FC_ASSERT( current_recursion < max_recursion );
+         ++current_recursion;
+         result.second.push_back( set_op_fees( prop_op.op ) );
+         --current_recursion;
+      }
+      // we need to do this on the boxed version, which is why we use
+      // two mutually recursive functions instead of a visitor
+      result.first = current_fee_schedule.set_fee( proposal_create_op, core_exchange_rate );
+      fc::variant vresult;
+      fc::to_variant( result, vresult );
+      return vresult;
+   }
+
+   const fee_schedule& current_fee_schedule;
+   const price& core_exchange_rate;
+   uint32_t max_recursion;
+   uint32_t current_recursion = 0;
+};
+
+vector< fc::variant > database_api_impl::get_required_fees( const vector<operation>& ops, asset_id_type id )const
+{
+   vector< operation > _ops = ops;
+   //
+   // we copy the ops because we need to mutate an operation to reliably
+   // determine its fee, see #435
+   //
+
+   vector< fc::variant > result;
    result.reserve(ops.size());
-   const asset_object&  a = id(_db);
-   for( const auto& op : ops )
-      result.push_back( _db.current_fee_schedule().calculate_fee( op, a.options.core_exchange_rate ) );
+   const asset_object& a = id(_db);
+   get_required_fees_helper helper(
+      _db.current_fee_schedule(),
+      a.options.core_exchange_rate,
+      GET_REQUIRED_FEES_MAX_RECURSION );
+   for( operation& op : _ops )
+   {
+      result.push_back( helper.set_op_fees( op ) );
+   }
    return result;
 }
 
@@ -1546,8 +1658,12 @@ void database_api_impl::on_applied_block()
 
    const auto& ops = _db.get_applied_operations();
    map< std::pair<asset_id_type,asset_id_type>, vector<pair<operation, operation_result>> > subscribed_markets_ops;
-   for(const auto& op : ops)
+   for(const optional< operation_history_object >& o_op : ops)
    {
+      if( !o_op.valid() )
+         continue;
+      const operation_history_object& op = *o_op;
+
       std::pair<asset_id_type,asset_id_type> market;
       switch(op.op.which())
       {

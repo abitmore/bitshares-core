@@ -119,16 +119,18 @@ void database::open(
          init_genesis(genesis_loader());
 
       fc::optional<signed_block> last_block = _block_id_to_block.last();
+	  //auto b = *last_block;
       if( last_block.valid() )
       {
          _fork_db.start_block( *last_block );
          idump((last_block->id())(last_block->block_num()));
+         idump((head_block_id())(head_block_num()));
          if( last_block->id() != head_block_id() )
-         {
-              FC_ASSERT( head_block_num() == 0, "last block ID does not match current chain state" );
+		 { 
+              FC_ASSERT( head_block_num() == 0, "last block ID does not match current chain state",
+				  ("last_block->id", last_block->id())("head_block_num", head_block_num()) ("head_block_id", head_block_id()));
          }
       }
-      //idump((head_block_id())(head_block_num()));
    }
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
 }
@@ -144,7 +146,9 @@ void database::close(bool rewind)
    {
       try
       {
-         while( true )
+         uint32_t cutoff = get_dynamic_global_properties().last_irreversible_block_num;
+
+         while( head_block_num() > cutoff )
          {
          //   elog("pop");
             block_id_type popped_block_id = head_block_id();

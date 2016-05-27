@@ -81,6 +81,43 @@ struct operation_process_fill_order
       const auto& buckets = _plugin.tracked_buckets();
       auto& db         = _plugin.database();
       const auto& bucket_idx = db.get_index_type<bucket_index>();
+      const auto& history_idx = db.get_index_type<history_index>().indices().get<by_key>();
+
+      auto time = db.head_block_time();
+
+      history_key hkey;
+      hkey.base = o.pays.asset_id;
+      hkey.quote = o.receives.asset_id;
+      if( hkey.base > hkey.quote ) 
+         std::swap( hkey.base, hkey.quote );
+      hkey.sequence = std::numeric_limits<int64_t>::min();
+
+      auto itr = history_idx.lower_bound( hkey );
+
+      if( itr->key.base == hkey.base && itr->key.quote == hkey.quote )
+         hkey.sequence = itr->key.sequence - 1;
+      else
+         hkey.sequence = 0;
+
+      db.create<order_history_object>( [&]( order_history_object& ho ) {
+         ho.key = hkey;
+         ho.time = time;
+         ho.op = o;
+      });
+
+      hkey.sequence += 200;
+      itr = history_idx.lower_bound( hkey );
+
+      while( itr != history_idx.end() )
+      {
+         if( itr->key.base == hkey.base && itr->key.quote == hkey.quote )
+         {
+            db.remove( *itr );
+            itr = history_idx.lower_bound( hkey );
+         }
+         else break;
+      }
+
 
       auto max_history = _plugin.max_history();
       for( auto bucket : buckets )
@@ -90,6 +127,7 @@ struct operation_process_fill_order
           bucket_key key;
           key.base    = o.pays.asset_id;
           key.quote   = o.receives.asset_id;
+
 
           /** for every matched order there are two fill order operations created, one for
            * each side.  We can filter the duplicates by only considering the fill operations where
@@ -178,9 +216,12 @@ void market_history_plugin_impl::update_market_histories( const signed_block& b 
    if( _tracked_buckets.size() == 0 ) return;
 
    graphene::chain::database& db = database();
-   const vector<operation_history_object>& hist = db.get_applied_operations();
-   for( auto op : hist )
-      op.op.visit( operation_process_fill_order( _self, b.timestamp ) );
+   const vector<optional< operation_history_object > >& hist = db.get_applied_operations();
+   for( const optional< operation_history_object >& o_op : hist )
+   {
+      if( o_op.valid() )
+         o_op->op.visit( operation_process_fill_order( _self, b.timestamp ) );
+   }
 }
 
 } // end namespace detail
@@ -222,6 +263,7 @@ void market_history_plugin::plugin_initialize(const boost::program_options::vari
 { try {
    database().applied_block.connect( [&]( const signed_block& b){ my->update_market_histories(b); } );
    database().add_index< primary_index< bucket_index  > >();
+   database().add_index< primary_index< history_index  > >();
 
    if( options.count( "bucket-size" ) )
    {

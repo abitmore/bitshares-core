@@ -77,6 +77,11 @@ namespace graphene { namespace chain {
 
          /// @brief Split up and pay out @ref pending_fees and @ref pending_vested_fees
          void process_fees(const account_object& a, database& d) const;
+
+         /**
+          * Core fees are paid into the account_statistics_object by this method
+          */
+         void pay_fee( share_type core_fee, share_type cashback_vesting_threshold );
    };
 
    /**
@@ -229,7 +234,7 @@ namespace graphene { namespace chain {
           * @return true if this account is whitelisted and not blacklisted to transact in the provided asset; false
           * otherwise.
           */
-         bool is_authorized_asset(const asset_object& asset_obj)const;
+         bool is_authorized_asset(const asset_object& asset_obj, const database& d)const;
 
          account_id_type get_id()const { return id; }
    };
@@ -297,7 +302,8 @@ namespace graphene { namespace chain {
             member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
          >,
          ordered_non_unique< tag<by_account>, member<account_balance_object, account_id_type, &account_balance_object::owner> >,
-         ordered_non_unique< tag<by_asset>, member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
+		 ordered_non_unique< tag<by_asset>, 
+			member<account_balance_object, asset_id_type, &account_balance_object::asset_type>>
       >
    > account_balance_object_multi_index_type;
 

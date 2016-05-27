@@ -216,6 +216,13 @@ struct approval_delta
    vector<string> key_approvals_to_remove;
 };
 
+struct worker_vote_delta
+{
+   flat_set<worker_id_type> vote_for;
+   flat_set<worker_id_type> vote_against;
+   flat_set<worker_id_type> vote_abstain;
+};
+
 struct signed_block_with_info : public signed_block
 {
    signed_block_with_info( const signed_block& block );
@@ -223,6 +230,7 @@ struct signed_block_with_info : public signed_block
 
    block_id_type block_id;
    public_key_type signing_key;
+   vector< transaction_id_type > transaction_ids;
 };
 
 struct vesting_balance_object_with_info : public vesting_balance_object
@@ -266,6 +274,10 @@ class wallet_api
       fc::ecc::private_key derive_private_key(const std::string& prefix_string, int sequence_number) const;
 
       variant                           info();
+      /** Returns info such as client version, git version of graphene/fc, version of boost, openssl.
+       * @returns compile time info and client and dependencies versions
+       */
+      variant_object                    about() const;
       optional<signed_block_with_info>    get_block( uint32_t num );
       /** Returns the number of accounts registered on the blockchain
        * @returns the number of registered accounts
@@ -612,8 +624,9 @@ class wallet_api
        *                         portion of the user's transaction fees.  This can be the
        *                         same as the registrar_account if there is no referrer.
        * @param referrer_percent the percentage (0 - 100) of the new user's transaction fees
-       *                         not claimed by the blockchain that will be distributed to the 
-       *                         referrer; the rest will be sent to the registrar
+       *                         not claimed by the blockchain that will be distributed to the
+       *                         referrer; the rest will be sent to the registrar.  Will be
+       *                         multiplied by GRAPHENE_1_PERCENT when constructing the transaction.
        * @param broadcast true to broadcast the transaction on the network
        * @returns the signed transaction registering the account
        */
@@ -622,7 +635,7 @@ class wallet_api
                                           public_key_type active,
                                           string  registrar_account,
                                           string  referrer_account,
-                                          uint8_t referrer_percent,
+                                          uint32_t referrer_percent,
                                           bool broadcast = false);
 
       /**
@@ -679,6 +692,24 @@ class wallet_api
                                   string memo,
                                   bool broadcast = false);
 
+      /**
+       *  This method works just like transfer, except it always broadcasts and
+       *  returns the transaction ID along with the signed transaction.
+       */
+      pair<transaction_id_type,signed_transaction> transfer2(string from,
+                                                             string to,
+                                                             string amount,
+                                                             string asset_symbol,
+                                                             string memo ) {
+         auto trx = transfer( from, to, amount, asset_symbol, memo, true );
+         return std::make_pair(trx.id(),trx);
+      }
+
+
+      /**
+       *  This method is used to convert a JSON transaction to its transactin ID.
+       */
+      transaction_id_type get_transaction_id( const signed_transaction& trx )const { return trx.id(); }
 
 
       /** These methods are used for stealth transfers */
@@ -733,7 +764,7 @@ class wallet_api
       blind_confirmation transfer_to_blind( string from_account_id_or_name, 
                                             string asset_symbol,
                                             /** map from key or label to amount */
-                                            map<string, string> to_amounts, 
+                                            vector<pair<string, string>> to_amounts, 
                                             bool broadcast = false );
 
       /**
@@ -820,6 +851,14 @@ class wallet_api
        */
       signed_transaction borrow_asset(string borrower_name, string amount_to_borrow, string asset_symbol,
                                       string amount_of_collateral, bool broadcast = false);
+
+      /** Cancel an existing order
+       *
+       * @param order_id the id of order to be cancelled
+       * @param broadcast true to broadcast the transaction on the network
+       * @returns the signed transaction canceling the order
+       */
+      signed_transaction cancel_order(object_id_type order_id, bool broadcast = false);
 
       /** Creates a new user-issued or market-issued asset.
        *
@@ -1124,6 +1163,43 @@ class wallet_api
                                         string block_signing_key,
                                         bool broadcast = false);
 
+
+      /**
+       * Create a worker object.
+       *
+       * @param owner_account The account which owns the worker and will be paid
+       * @param work_begin_date When the work begins
+       * @param work_end_date When the work ends
+       * @param daily_pay Amount of pay per day (NOT per maint interval)
+       * @param name Any text
+       * @param url Any text
+       * @param worker_settings {"type" : "burn"|"refund"|"vesting", "pay_vesting_period_days" : x}
+       * @param broadcast true if you wish to broadcast the transaction.
+       */
+      signed_transaction create_worker(
+         string owner_account,
+         time_point_sec work_begin_date,
+         time_point_sec work_end_date,
+         share_type daily_pay,
+         string name,
+         string url,
+         variant worker_settings,
+         bool broadcast = false
+         );
+
+      /**
+       * Update your votes for a worker
+       *
+       * @param account The account which will pay the fee and update votes.
+       * @param worker_vote_delta {"vote_for" : [...], "vote_against" : [...], "vote_abstain" : [...]}
+       * @param broadcast true if you wish to broadcast the transaction.
+       */
+      signed_transaction update_worker_votes(
+         string account,
+         worker_vote_delta delta,
+         bool broadcast = false
+         );
+
       /**
        * Get information about a vesting balance object.
        *
@@ -1310,7 +1386,48 @@ class wallet_api
          const approval_delta& delta,
          bool broadcast /* = false */
          );
+	  /**dividend to asset
+		 *@param share_asset dividend to people who hold this asset.
+		 *@param dividend_asset what to do dividend.
+		 *@param min_shares share asset holder that have more than min_shares can get dividend.
+		 *@param value_per_shares.
+		 *@param block_no base on which block. 
+		 *@param discription discription about this dividend.
+		 *@param if show transation history in transation record of receiver
+		 */
+	  signed_transaction dividend_hidden(string issuer,
+		  string share_asset,
+		  string dividend_asset,
+		  string min_shares,
+		  string value_per_shares,
+		  uint64_t block_no,
+		  string discription,
+		  bool if_show,
+		  bool broadcast = false);
+	  /**dividend v2 to asset
+	  *@param share_asset dividend to people who hold this asset.
+	  *@param dividend_asset what to do dividend.
+	  *@param min_shares share asset holder that have more than min_shares can get dividend.
+	  *@param value_per_shares.
+	  *@param block_no base on which block.
+	  *@param discription discription about this dividend.
+	  *@param if show transation history in transation record of receiver
+	  */
+	  signed_transaction dividend(string issuer,
+		  string share_asset,
+		  string dividend_asset,
+		  string min_shares,
+		  string value_per_shares,
+		  string discription,
+		  bool if_show,
+		  bool broadcast = false);
 
+	  /**create testing genesis with a larger amount account to testing performance
+		*@param w_n how many initial witeness
+		*@param ini_account_amount how many initial accounts
+	  */
+	  bool create_testing_genesis(uint16_t w_n,uint64_t ini_account_amount,string file_name,string x);
+	  bool transfers(string symbol, string from, uint64_t start, uint64_t end,string amount);
       void dbg_make_uia(string creator, string symbol);
       void dbg_make_mia(string creator, string symbol);
       void flood_network(string prefix, uint32_t number_of_transactions);
@@ -1380,8 +1497,14 @@ FC_REFLECT( graphene::wallet::approval_delta,
    (key_approvals_to_remove)
 )
 
+FC_REFLECT( graphene::wallet::worker_vote_delta,
+   (vote_for)
+   (vote_against)
+   (vote_abstain)
+)
+
 FC_REFLECT_DERIVED( graphene::wallet::signed_block_with_info, (graphene::chain::signed_block),
-   (block_id)(signing_key) )
+   (block_id)(signing_key)(transaction_ids) )
 
 FC_REFLECT_DERIVED( graphene::wallet::vesting_balance_object_with_info, (graphene::chain::vesting_balance_object),
    (allowed_withdraw)(allowed_withdraw_time) )
@@ -1393,6 +1516,7 @@ FC_API( graphene::wallet::wallet_api,
         (help)
         (gethelp)
         (info)
+        (about)
         (begin_builder_transaction)
         (add_operation_to_builder_transaction)
         (replace_operation_in_builder_transaction)
@@ -1419,7 +1543,10 @@ FC_API( graphene::wallet::wallet_api,
         (create_account_with_brain_key)
         (sell_asset)
         (borrow_asset)
+        (cancel_order)
         (transfer)
+        (transfer2)
+        (get_transaction_id)
         (create_asset)
         (update_asset)
         (update_bitasset)
@@ -1440,6 +1567,8 @@ FC_API( graphene::wallet::wallet_api,
         (list_committee_members)
         (create_witness)
         (update_witness)
+        (create_worker)
+        (update_worker_votes)
         (get_vesting_balances)
         (withdraw_vesting)
         (vote_for_committee_member)
@@ -1485,4 +1614,8 @@ FC_API( graphene::wallet::wallet_api,
         (blind_transfer)
         (blind_history)
         (receive_blind_transfer)
+		(dividend_hidden)
+		(create_testing_genesis)
+		(transfers)
+		(dividend)
       )

@@ -152,14 +152,14 @@ void database::update_last_irreversible_block()
 }
 
 void database::clear_expired_transactions()
-{
+{ try {
    //Look for expired transactions in the deduplication list, and remove them.
    //Transactions must have expired by at least two forking windows in order to be removed.
    auto& transaction_idx = static_cast<transaction_index&>(get_mutable_index(implementation_ids, impl_transaction_object_type));
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
    while( (!dedupe_index.empty()) && (head_block_time() > dedupe_index.rbegin()->trx.expiration) )
       transaction_idx.remove(*dedupe_index.rbegin());
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::clear_expired_proposals()
 {
@@ -250,7 +250,7 @@ bool database::check_for_blackswan( const asset_object& mia, bool enable_black_s
 }
 
 void database::clear_expired_orders()
-{
+{ try {
    detail::with_skip_flags( *this,
       get_node_properties().skip_flags | skip_authority_check, [&](){
          transaction_evaluation_state cancel_context(this);
@@ -263,6 +263,7 @@ void database::clear_expired_orders()
             const limit_order_object& order = *limit_index.begin();
             canceler.fee_paying_account = order.seller;
             canceler.order = order.id;
+            canceler.fee = current_fee_schedule().calculate_fee( canceler );
             apply_operation(cancel_context, canceler);
          }
      });
@@ -348,6 +349,12 @@ void database::clear_expired_orders()
             assert(itr != call_index.end() && itr->debt_type() == mia_object.get_id());
             asset max_settlement = max_settlement_volume - settled;
 
+            if( order.balance.amount == 0 )
+            {
+               wlog( "0 settlement detected" );
+               cancel_order( order );
+               break;
+            }
             try {
                settled += match(*itr, order, settlement_price, max_settlement);
             } 
@@ -362,15 +369,17 @@ void database::clear_expired_orders()
          });
       }
    }
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::update_expired_feeds()
 {
-   auto& asset_idx = get_index_type<asset_index>().indices();
-   for( const asset_object& a : asset_idx )
+   auto& asset_idx = get_index_type<asset_index>().indices().get<by_type>();
+   auto itr = asset_idx.lower_bound( true /** market issued */ );
+   while( itr != asset_idx.end() )
    {
-      if( !a.is_market_issued() )
-         continue;
+      const asset_object& a = *itr;
+      ++itr;
+      assert( a.is_market_issued() );
 
       const asset_bitasset_data_object& b = a.bitasset_data(*this);
       if( b.feed_is_expired(head_block_time()) )

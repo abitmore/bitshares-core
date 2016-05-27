@@ -25,6 +25,7 @@
 #include <graphene/chain/asset_object.hpp>
 #include <graphene/chain/vesting_balance_object.hpp>
 #include <graphene/chain/witness_object.hpp>
+#include <fc/log/logger.hpp>
 
 namespace graphene { namespace chain {
 
@@ -41,7 +42,51 @@ asset database::get_balance(const account_object& owner, const asset_object& ass
 {
    return get_balance(owner.get_id(), asset_obj.get_id());
 }
-
+vector<pair<account_id_type, share_type>> database::get_balance(asset_id_type asset_id) const
+{
+	vector<pair<account_id_type, share_type>> results;
+	pair<account_id_type, share_type> result;
+	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
+	results.reserve(index.size());
+	for (auto itr = index.find(asset_id); itr != index.end() && itr->asset_type == asset_id; itr++)
+	{
+		result.first = itr->owner;
+		result.second = itr->balance;
+		results.push_back(result);
+	}
+	return std::move(results);
+}
+vector<pair<account_id_type, share_type>> database::get_satisfied_account_balance(asset_id_type asset_id, share_type min_amount)const
+{
+	ilog("start get_balance");
+	vector<pair<account_id_type, share_type>> results;
+	pair<account_id_type, share_type> result;
+	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
+	results.reserve(index.size());
+	for (auto itr = index.find(asset_id); itr != index.end() && itr->asset_type == asset_id; itr++)
+	{
+		if (itr->balance >= min_amount)
+		{
+			result.first = itr->owner;
+			result.second = itr->balance;
+			results.push_back(result);
+		}
+	}
+	ilog("finish get_balance");
+	return std::move(results);
+}
+uint64_t database::get_satisfied_holder(asset_id_type asset_id, share_type min_amount)const {
+	ilog("start get satisfied hold ");
+	uint64_t quantity=0;
+	auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
+	for (auto itr = index.find(asset_id); itr != index.end() && itr->asset_type == asset_id; itr++)
+	{
+		if (itr->balance >= min_amount)
+			quantity++;
+	}
+	ilog("finish get satisfied hold ");
+	return quantity;
+}
 string database::to_pretty_string( const asset& a )const
 {
    return a.asset_id(*this).amount_to_pretty_string(a.amount);

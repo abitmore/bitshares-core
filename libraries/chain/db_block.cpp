@@ -21,6 +21,7 @@
 
 #include <graphene/chain/database.hpp>
 #include <graphene/chain/db_with.hpp>
+#include <graphene/chain/hardfork.hpp>
 
 #include <graphene/chain/block_summary_object.hpp>
 #include <graphene/chain/global_property_object.hpp>
@@ -105,7 +106,7 @@ std::vector<block_id_type> database::get_block_ids_on_fork(block_id_type head_of
  */
 bool database::push_block(const signed_block& new_block, uint32_t skip)
 {
-   //idump((new_block.block_num())(new_block.id())(new_block.timestamp)(new_block.previous));
+//   idump((new_block.block_num())(new_block.id())(new_block.timestamp)(new_block.previous));
    bool result;
    detail::with_skip_flags( *this, skip, [&]()
    {
@@ -257,6 +258,7 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
    eval_state.operation_results.reserve(proposal.proposed_transaction.operations.size());
    processed_transaction ptrx(proposal.proposed_transaction);
    eval_state._trx = &ptrx;
+   size_t old_applied_ops_size = _applied_ops.size();
 
    try {
       auto session = _undo_db.start_undo_session(true);
@@ -265,6 +267,18 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
       remove(proposal);
       session.merge();
    } catch ( const fc::exception& e ) {
+      if( head_block_time() <= HARDFORK_483_TIME )
+      {
+         for( size_t i=old_applied_ops_size,n=_applied_ops.size(); i<n; i++ )
+         {
+            ilog( "removing failed operation from applied_ops: ${op}", ("op", *(_applied_ops[i])) );
+            _applied_ops[i].reset();
+         }
+      }
+      else
+      {
+         _applied_ops.resize( old_applied_ops_size );
+      }
       elog( "e", ("e",e.to_detail_string() ) );
       throw;
    }
@@ -279,14 +293,14 @@ signed_block database::generate_block(
    const fc::ecc::private_key& block_signing_private_key,
    uint32_t skip /* = 0 */
    )
-{
+{ try {
    signed_block result;
    detail::with_skip_flags( *this, skip, [&]()
    {
       result = _generate_block( when, witness_id, block_signing_private_key );
    } );
    return result;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 signed_block database::_generate_block(
    fc::time_point_sec when,
@@ -398,7 +412,6 @@ void database::pop_block()
 { try {
    _pending_tx_session.reset();
    auto head_id = head_block_id();
-   idump((head_id)(head_block_num()));
    optional<signed_block> head_block = fetch_block_by_id( head_id );
    GRAPHENE_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
    pop_undo();
@@ -419,7 +432,7 @@ void database::clear_pending()
 uint32_t database::push_applied_operation( const operation& op )
 {
    _applied_ops.emplace_back(op);
-   auto& oh = _applied_ops.back();
+   operation_history_object& oh = *(_applied_ops.back());
    oh.block_num    = _current_block_num;
    oh.trx_in_block = _current_trx_in_block;
    oh.op_in_trx    = _current_op_in_trx;
@@ -429,10 +442,15 @@ uint32_t database::push_applied_operation( const operation& op )
 void database::set_applied_operation_result( uint32_t op_id, const operation_result& result )
 {
    assert( op_id < _applied_ops.size() );
-   _applied_ops[op_id].result = result;
+   if( _applied_ops[op_id] )
+      _applied_ops[op_id]->result = result;
+   else
+   {
+      elog( "Could not set operation result (head_block_num=${b})", ("b", head_block_num()) );
+   }
 }
 
-const vector<operation_history_object>& database::get_applied_operations() const
+const vector<optional< operation_history_object > >& database::get_applied_operations() const
 {
    return _applied_ops;
 }
@@ -549,7 +567,10 @@ processed_transaction database::apply_transaction(const signed_transaction& trx,
 processed_transaction database::_apply_transaction(const signed_transaction& trx)
 { try {
    uint32_t skip = get_node_properties().skip_flags;
-   trx.validate();
+
+   if( !(skip&skip_validate) )
+      trx.validate();
+
    auto& trx_idx = get_mutable_index_type<transaction_index>();
    const chain_id_type& chain_id = get_chain_id();
    auto trx_id = trx.id();
@@ -629,7 +650,7 @@ operation_result database::apply_operation(transaction_evaluation_state& eval_st
    auto result = eval->evaluate( eval_state, op, true );
    set_applied_operation_result( op_id, result );
    return result;
-} FC_CAPTURE_AND_RETHROW(  ) }
+} FC_CAPTURE_AND_RETHROW( (op) ) }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
 {

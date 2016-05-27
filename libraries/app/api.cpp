@@ -141,11 +141,11 @@ namespace graphene { namespace app {
     {
     }
 
-    fc::variant network_node_api::get_info() const
+    fc::variant_object network_node_api::get_info() const
     {
-        fc::mutable_variant_object result = _app.p2p_node()->network_get_info();
-        result["connection_count"] = _app.p2p_node()->get_connection_count();
-        return result;
+       fc::mutable_variant_object result = _app.p2p_node()->network_get_info();
+       result["connection_count"] = _app.p2p_node()->get_connection_count();
+       return result;
     }
 
     void network_node_api::add_node(const fc::ip::endpoint& ep)
@@ -155,7 +155,22 @@ namespace graphene { namespace app {
 
     std::vector<net::peer_status> network_node_api::get_connected_peers() const
     {
-      return _app.p2p_node()->get_connected_peers();
+       return _app.p2p_node()->get_connected_peers();
+    }
+
+    std::vector<net::potential_peer_record> network_node_api::get_potential_peers() const
+    {
+       return _app.p2p_node()->get_potential_peers();
+    }
+
+    fc::variant_object network_node_api::get_advanced_node_parameters() const
+    {
+       return _app.p2p_node()->get_advanced_node_parameters();
+    }
+
+    void network_node_api::set_advanced_node_parameters(const fc::variant_object& params)
+    {
+       return _app.p2p_node()->set_advanced_node_parameters(params);
     }
 
     fc::api<network_broadcast_api> login_api::network_broadcast()const
@@ -310,27 +325,73 @@ namespace graphene { namespace app {
        return result;
     } // end get_relevant_accounts( obj )
 
-    vector<operation_history_object> history_api::get_account_history(account_id_type account, operation_history_id_type stop, unsigned limit, operation_history_id_type start) const
+    vector<order_history_object> history_api::get_fill_order_history( asset_id_type a, asset_id_type b, uint32_t limit  )const
     {
        FC_ASSERT(_app.chain_database());
        const auto& db = *_app.chain_database();
-       FC_ASSERT(limit <= 100);
-       vector<operation_history_object> result;
-       const auto& stats = account(db).statistics(db);
-       if(stats.most_recent_op == account_transaction_history_id_type()) return result;
-       const account_transaction_history_object* node = &stats.most_recent_op(db);
-       if(start == operation_history_id_type())
-          start = node->id;
-       while(node && node->operation_id.instance.value > stop.instance.value && result.size() < limit)
+       if( a > b ) std::swap(a,b);
+       const auto& history_idx = db.get_index_type<graphene::market_history::history_index>().indices().get<by_key>();
+       history_key hkey;
+       hkey.base = a;
+       hkey.quote = b;
+       hkey.sequence = std::numeric_limits<int64_t>::min();
+
+       uint32_t count = 0;
+       auto itr = history_idx.lower_bound( hkey );
+       vector<order_history_object> result;
+       while( itr != history_idx.end() )
        {
-          if(node->id.instance() <= start.instance.value)
-             result.push_back(node->operation_id(db));
-          if(node->next == account_transaction_history_id_type())
-             node = nullptr;
-          else node = db.find(node->next);
+          if( itr->key.base != a || itr->key.quote != b ) break;
+          result.push_back( *itr );
+          ++itr;
+          ++count;
+          if( count  > limit ) break;
        }
+
        return result;
     }
+
+ vector<operation_history_object> history_api::get_account_history(account_id_type account, operation_history_id_type stop, unsigned limit, operation_history_id_type start) const
+{
+	FC_ASSERT(_app.chain_database());
+	const auto& db = *_app.chain_database();
+	FC_ASSERT(limit <= 100);
+	vector<operation_history_object> result;
+	const auto& stats = account(db).statistics(db);
+	if (stats.most_recent_op == account_transaction_history_id_type()) return result;
+	const account_transaction_history_object* node = &stats.most_recent_op(db);
+	if (start == operation_history_id_type())
+		start = node->id;
+	while (node && node->operation_id.instance.value > stop.instance.value && result.size() < limit)
+	{
+		if (node->id.instance() <= start.instance.value)
+		{
+			operation_history_object _op_history_ob = node->operation_id(db);
+			if (_op_history_ob.op.which() == operation::tag<dividend_operation>::value )
+			{
+				pair<account_id_type, share_type> _receiver;
+				uint32_t l = _op_history_ob.op.get<dividend_operation>().receivers.size();
+				for (uint32_t i = 0; i < l; i++)
+				{
+					if (_op_history_ob.op.get<dividend_operation>().receivers[i].first == account)
+					{
+						_receiver.second = _op_history_ob.op.get<dividend_operation>().receivers[i].second;
+						_receiver.first = account;
+						break;
+					}
+				}
+				_op_history_ob.op.get<dividend_operation>().receivers.clear();
+				_op_history_ob.op.get<dividend_operation>().receivers.push_back(_receiver);
+				result.push_back(_op_history_ob);
+			 }
+			result.push_back(node->operation_id(db));
+		}		
+		if (node->next == account_transaction_history_id_type())
+			node = nullptr;
+		else node = db.find(node->next);
+	}
+	return result;
+ }
 
     flat_set<uint32_t> history_api::get_market_history_buckets()const
     {
@@ -345,7 +406,7 @@ namespace graphene { namespace app {
        FC_ASSERT(_app.chain_database());
        const auto& db = *_app.chain_database();
        vector<bucket_object> result;
-       result.reserve(100);
+       result.reserve(200);
 
        if( a > b ) std::swap(a,b);
 
@@ -353,7 +414,7 @@ namespace graphene { namespace app {
        const auto& by_key_idx = bidx.indices().get<by_key>();
 
        auto itr = by_key_idx.lower_bound( bucket_key( a, b, bucket_seconds, start ) );
-       while( itr != by_key_idx.end() && itr->key.open <= end && result.size() < 100 )
+       while( itr != by_key_idx.end() && itr->key.open <= end && result.size() < 200 )
        {
           if( !(itr->key.base == a && itr->key.quote == b && itr->key.seconds == bucket_seconds) )
           {

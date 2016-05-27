@@ -70,6 +70,7 @@ namespace graphene { namespace app {
                                                               unsigned limit = 100,
                                                               operation_history_id_type start = operation_history_id_type())const;
 
+         vector<order_history_object> get_fill_order_history( asset_id_type a, asset_id_type b, uint32_t limit )const;
          vector<bucket_object> get_market_history( asset_id_type a, asset_id_type b, uint32_t bucket_seconds,
                                                    fc::time_point_sec start, fc::time_point_sec end )const;
          flat_set<uint32_t> get_market_history_buckets()const;
@@ -138,7 +139,7 @@ namespace graphene { namespace app {
          /**
           * @brief Return general network information, such as p2p port
           */
-         fc::variant get_info() const;
+         fc::variant_object get_info() const;
 
          /**
           * @brief add_node Connect to a new peer
@@ -148,8 +149,26 @@ namespace graphene { namespace app {
 
          /**
           * @brief Get status of all current connections to peers
-           */
+          */
          std::vector<net::peer_status> get_connected_peers() const;
+
+         /**
+          * @brief Get advanced node parameters, such as desired and max
+          *        number of connections
+          */
+         fc::variant_object get_advanced_node_parameters() const;
+
+         /**
+          * @brief Set advanced node parameters, such as desired and max
+          *        number of connections
+          * @param params a JSON object containing the name/value pairs for the parameters to set
+          */
+         void set_advanced_node_parameters(const fc::variant_object& params);
+
+         /**
+          * @brief Return list of potential peers
+          */
+         std::vector<net::potential_peer_record> get_potential_peers() const;
 
       private:
          application& _app;
@@ -203,6 +222,7 @@ FC_REFLECT( graphene::app::network_broadcast_api::transaction_confirmation,
 
 FC_API(graphene::app::history_api,
        (get_account_history)
+       (get_fill_order_history)
        (get_market_history)
        (get_market_history_buckets)
      )
@@ -215,6 +235,9 @@ FC_API(graphene::app::network_node_api,
        (get_info)
        (add_node)
        (get_connected_peers)
+       (get_potential_peers)
+       (get_advanced_node_parameters)
+       (set_advanced_node_parameters)
      )
 FC_API(graphene::app::login_api,
        (login)

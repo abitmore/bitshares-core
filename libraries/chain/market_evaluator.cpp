@@ -18,15 +18,20 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#include <graphene/chain/market_evaluator.hpp>
 #include <graphene/chain/account_object.hpp>
 #include <graphene/chain/exceptions.hpp>
+#include <graphene/chain/hardfork.hpp>
+#include <graphene/chain/market_evaluator.hpp>
+
+#include <fc/smart_ref_impl.hpp>
+#include <graphene/chain/protocol/fee_schedule.hpp>
+
 #include <fc/uint128.hpp>
 
 namespace graphene { namespace chain {
 void_result limit_order_create_evaluator::do_evaluate(const limit_order_create_operation& op)
 { try {
-   database& d = db();
+   const database& d = db();
 
    FC_ASSERT( op.expiration >= d.head_block_time() );
 
@@ -39,14 +44,30 @@ void_result limit_order_create_evaluator::do_evaluate(const limit_order_create_o
    if( _sell_asset->options.blacklist_markets.size() )
       FC_ASSERT( _sell_asset->options.blacklist_markets.find(_receive_asset->id) == _sell_asset->options.blacklist_markets.end() );
 
-   if( _sell_asset->enforce_white_list() ) FC_ASSERT( _seller->is_authorized_asset( *_sell_asset ) );
-   if( _receive_asset->enforce_white_list() ) FC_ASSERT( _seller->is_authorized_asset( *_receive_asset ) );
+   if( d.head_block_time() <= HARDFORK_416_TIME )
+   {
+      if( _sell_asset->options.flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_sell_asset, d ) );
+      if( _receive_asset->options.flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_receive_asset, d ) );
+   }
+   else
+   {
+      FC_ASSERT( _seller->is_authorized_asset( *_sell_asset, d ) );
+      FC_ASSERT( _seller->is_authorized_asset( *_receive_asset, d ) );
+   }
 
    FC_ASSERT( d.get_balance( *_seller, *_sell_asset ) >= op.amount_to_sell, "insufficient balance",
               ("balance",d.get_balance(*_seller,*_sell_asset))("amount_to_sell",op.amount_to_sell) );
 
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
+
+void limit_order_create_evaluator::pay_fee()
+{
+   if( db().head_block_time() <= HARDFORK_445_TIME )
+      generic_evaluator::pay_fee();
+   else
+      _deferred_fee = core_fee_paid;
+}
 
 object_id_type limit_order_create_evaluator::do_apply(const limit_order_create_operation& op)
 { try {
@@ -65,6 +86,7 @@ object_id_type limit_order_create_evaluator::do_apply(const limit_order_create_o
        obj.for_sale = op.amount_to_sell.amount;
        obj.sell_price = op.get_price();
        obj.expiration = op.expiration;
+       obj.deferred_fee = _deferred_fee;
    });
    limit_order_id_type order_id = new_order_object.id; // save this because we may remove the object by filling it
    bool filled = db().apply_order(new_order_object);
@@ -92,12 +114,12 @@ asset limit_order_cancel_evaluator::do_apply(const limit_order_cancel_operation&
    auto quote_asset = _order->sell_price.quote.asset_id;
    auto refunded = _order->amount_for_sale();
 
-   db().cancel_order(*_order, false /* don't create a virtual op*/);
+   d.cancel_order(*_order, false /* don't create a virtual op*/);
 
    // Possible optimization: order can be called by canceling a limit order iff the canceled order was at the top of the book.
    // Do I need to check calls in both assets?
-   db().check_call_orders(base_asset(d));
-   db().check_call_orders(quote_asset(d));
+   d.check_call_orders(base_asset(d));
+   d.check_call_orders(quote_asset(d));
 
    return refunded;
 } FC_CAPTURE_AND_RETHROW( (o) ) }

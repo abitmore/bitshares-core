@@ -46,6 +46,8 @@
 
 using namespace graphene::chain::test;
 
+uint32_t GRAPHENE_TESTING_GENESIS_TIMESTAMP = 1431700000;
+
 namespace graphene { namespace chain {
 
 using std::cout;
@@ -167,6 +169,7 @@ void database_fixture::verify_asset_supplies( const database& db )
       asset for_sale = o.amount_for_sale();
       if( for_sale.asset_id == asset_id_type() ) core_in_orders += for_sale.amount;
       total_balances[for_sale.asset_id] += for_sale.amount;
+      total_balances[asset_id_type()] += o.deferred_fee;
    }
    for( const call_order_object& o : db.get_index_type<call_order_index>().indices() )
    {
@@ -499,7 +502,9 @@ const asset_object& database_fixture::create_user_issued_asset( const string& na
    creator.common_options.max_supply = GRAPHENE_MAX_SHARE_SUPPLY;
    creator.common_options.flags = flags;
    creator.common_options.issuer_permissions = flags;
+   trx.operations.clear();
    trx.operations.push_back(std::move(creator));
+   set_expiration( db, trx );
    trx.validate();
    processed_transaction ptx = db.push_transaction(trx, ~0);
    trx.operations.clear();
@@ -516,6 +521,41 @@ void database_fixture::issue_uia( const account_object& recipient, asset amount 
    trx.operations.push_back(op);
    db.push_transaction( trx, ~0 );
    trx.operations.clear();
+}
+
+void database_fixture::issue_uia( account_id_type recipient_id, asset amount )
+{
+   issue_uia( recipient_id(db), amount );
+}
+
+void database_fixture::change_fees(
+   const flat_set< fee_parameters >& new_params,
+   uint32_t new_scale /* = 0 */
+   )
+{
+   const chain_parameters& current_chain_params = db.get_global_properties().parameters;
+   const fee_schedule& current_fees = *(current_chain_params.current_fees);
+
+   flat_map< int, fee_parameters > fee_map;
+   fee_map.reserve( current_fees.parameters.size() );
+   for( const fee_parameters& op_fee : current_fees.parameters )
+      fee_map[ op_fee.which() ] = op_fee;
+   for( const fee_parameters& new_fee : new_params )
+      fee_map[ new_fee.which() ] = new_fee;
+
+   fee_schedule_type new_fees;
+
+   for( const std::pair< int, fee_parameters >& item : fee_map )
+      new_fees.parameters.insert( item.second );
+   if( new_scale != 0 )
+      new_fees.scale = new_scale;
+
+   chain_parameters new_chain_params = current_chain_params;
+   new_chain_params.current_fees = new_fees;
+
+   db.modify(db.get_global_properties(), [&](global_property_object& p) {
+      p.parameters = new_chain_params;
+   });
 }
 
 const account_object& database_fixture::create_account(
@@ -733,6 +773,8 @@ void database_fixture::publish_feed( const asset_object& mia, const account_obje
    op.publisher = by.id;
    op.asset_id = mia.id;
    op.feed = f;
+   if( op.feed.core_exchange_rate.is_null() )
+      op.feed.core_exchange_rate = op.feed.settlement_price;
    trx.operations.emplace_back( std::move(op) );
 
    for( auto& op : trx.operations ) db.current_fee_schedule().set_fee(op);

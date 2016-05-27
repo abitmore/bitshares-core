@@ -21,6 +21,7 @@
 #include <graphene/chain/database.hpp>
 #include <graphene/chain/evaluator.hpp>
 #include <graphene/chain/exceptions.hpp>
+#include <graphene/chain/hardfork.hpp>
 #include <graphene/chain/transaction_evaluation_state.hpp>
 
 #include <graphene/chain/asset_object.hpp>
@@ -46,17 +47,25 @@ database& generic_evaluator::db()const { return trx_state->db(); }
 
    void generic_evaluator::prepare_fee(account_id_type account_id, asset fee)
    {
+      const database& d = db();
       fee_from_account = fee;
       FC_ASSERT( fee.amount >= 0 );
-      fee_paying_account = &account_id(db());
-      fee_paying_account_statistics = &fee_paying_account->statistics(db());
+      fee_paying_account = &account_id(d);
+      fee_paying_account_statistics = &fee_paying_account->statistics(d);
 
-      fee_asset = &fee.asset_id(db());
-      fee_asset_dyn_data = &fee_asset->dynamic_asset_data_id(db());
+      fee_asset = &fee.asset_id(d);
+      fee_asset_dyn_data = &fee_asset->dynamic_asset_data_id(d);
+
+      if( d.head_block_time() > HARDFORK_419_TIME )
+      {
+         FC_ASSERT( fee_paying_account->is_authorized_asset( *fee_asset, d ), "Account ${acct} '${name}' attempted to pay fee by using asset ${a} '${sym}', which is unauthorized due to whitelist / blacklist",
+            ("acct", fee_paying_account->id)("name", fee_paying_account->name)("a", fee_asset->id)("sym", fee_asset->symbol) );
+      }
 
       if( fee_from_account.asset_id == asset_id_type() )
          core_fee_paid = fee_from_account.amount;
-      else {
+      else
+      {
          asset fee_from_pool = fee_from_account * fee_asset->options.core_exchange_rate;
          FC_ASSERT( fee_from_pool.asset_id == asset_id_type() );
          core_fee_paid = fee_from_pool.amount;
@@ -65,19 +74,29 @@ database& generic_evaluator::db()const { return trx_state->db(); }
       }
    }
 
+   void generic_evaluator::convert_fee()
+   {
+      if( !trx_state->skip_fee ) {
+         if( fee_asset->get_id() != asset_id_type() )
+         {
+            db().modify(*fee_asset_dyn_data, [this](asset_dynamic_data_object& d) {
+               d.accumulated_fees += fee_from_account.amount;
+               d.fee_pool -= core_fee_paid;
+            });
+         }
+      }
+   }
+
    void generic_evaluator::pay_fee()
    { try {
-      if( fee_asset->get_id() != asset_id_type() )
-         db().modify(*fee_asset_dyn_data, [this](asset_dynamic_data_object& d) {
-            d.accumulated_fees += fee_from_account.amount;
-            d.fee_pool -= core_fee_paid;
+      if( !trx_state->skip_fee ) {
+         database& d = db();
+         /// TODO: db().pay_fee( account_id, core_fee );
+         d.modify(*fee_paying_account_statistics, [&](account_statistics_object& s)
+         {
+            s.pay_fee( core_fee_paid, d.get_global_properties().parameters.cashback_vesting_threshold );
          });
-      db().modify(*fee_paying_account_statistics, [&](account_statistics_object& s) {
-         if( core_fee_paid > db().get_global_properties().parameters.cashback_vesting_threshold )
-            s.pending_fees += core_fee_paid;
-         else
-            s.pending_vested_fees += core_fee_paid;
-      });
+      }
    } FC_CAPTURE_AND_RETHROW() }
 
 } }
