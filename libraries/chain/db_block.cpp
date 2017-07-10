@@ -489,6 +489,19 @@ void database::_apply_block( const signed_block& next_block )
 { try {
    uint32_t next_block_num = next_block.block_num();
    uint32_t skip = get_node_properties().skip_flags;
+{
+   auto& asset_idx = get_index_type<asset_index>().indices().get<by_type>();
+   auto itr = asset_idx.lower_bound( true /** market issued */ );
+   while( itr != asset_idx.end() )
+   {
+      const asset_object& a = *itr;
+      const asset_bitasset_data_object& b = a.bitasset_data(*this);
+      //idump((a)(b)(b.id)(b.id.number)(object_id_type()));
+      FC_ASSERT( string(b.id) != string(object_id_type()), "${b}", ("b",next_block)  );
+      break;
+   }
+}
+
    _applied_ops.clear();
 
    FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
@@ -543,6 +556,19 @@ void database::_apply_block( const signed_block& next_block )
    _applied_ops.clear();
 
    notify_changed_objects();
+{
+   auto& asset_idx = get_index_type<asset_index>().indices().get<by_type>();
+   auto itr = asset_idx.lower_bound( true /** market issued */ );
+   while( itr != asset_idx.end() )
+   {
+      const asset_object& a = *itr;
+      const asset_bitasset_data_object& b = a.bitasset_data(*this);
+      FC_ASSERT( string(b.id) != string(object_id_type()), "${blk}${id}", ("blk",next_block)("id",b.id.number)  );
+      //FC_ASSERT( b.id != object_id_type(), "${b}", ("b",next_block)  );
+      break;
+   }
+}
+
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
 
