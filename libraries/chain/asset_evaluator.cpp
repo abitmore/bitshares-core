@@ -39,6 +39,15 @@ void_result asset_create_evaluator::do_evaluate( const asset_create_operation& o
 
    database& d = db();
 
+   if( op.fee.asset_id != asset_id_type() )
+   {
+      if( d.head_block_num() < 21040000 )
+         wlog( "On block #${n}, creation fee of asset ${a} is in ${f}",
+               ("n",d.head_block_num()+1)("a",op.symbol)("f",op.fee.asset_id) );
+      else
+         FC_ASSERT( false, "Emergency forking, can only pay fee in BTS now" );
+   }
+
    const auto& chain_parameters = d.get_global_properties().parameters;
    FC_ASSERT( op.common_options.whitelist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
    FC_ASSERT( op.common_options.blacklist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
