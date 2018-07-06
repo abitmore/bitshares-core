@@ -119,8 +119,8 @@ void database::revive_bitasset( const asset_object& bitasset )
       // Create + execute a "bid" with 0 additional collateral
       const collateral_bid_object& pseudo_bid = create<collateral_bid_object>([&](collateral_bid_object& bid) {
          bid.bidder = bitasset.issuer;
-         bid.inv_swan_price = asset(0, bad.options.short_backing_asset)
-                              / asset(bdd.current_supply, bitasset.id);
+         bid.inv_swan_price = price( asset(0, bad.options.short_backing_asset),
+                                     asset(bdd.current_supply, bitasset.id), false );
       });
       execute_bid( pseudo_bid, bdd.current_supply, bad.settlement_fund, bad.current_feed );
    } else

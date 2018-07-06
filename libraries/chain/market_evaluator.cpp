@@ -388,7 +388,7 @@ void_result bid_collateral_evaluator::do_apply(const bid_collateral_operation& o
 
    _bid = &d.create<collateral_bid_object>([&]( collateral_bid_object& bid ) {
       bid.bidder = o.bidder;
-      bid.inv_swan_price = o.additional_collateral / o.debt_covered;
+      bid.inv_swan_price = price( o.additional_collateral, o.debt_covered, false );
    });
 
    return void_result();

@@ -22,7 +22,6 @@
  * THE SOFTWARE.
  */
 #include <graphene/chain/protocol/asset.hpp>
-#include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
 namespace graphene { namespace chain {
@@ -47,15 +46,39 @@ namespace graphene { namespace chain {
          if( a.quote.asset_id < b.quote.asset_id ) return true;
          if( a.quote.asset_id > b.quote.asset_id ) return false;
 
+         // this doesn't make a difference
+         if( a.quote.amount == 0 || b.base.amount == 0 )
+            return false;
+         if( b.quote.amount == 0 || a.base.amount == 0 )
+            return true;
+
+         /* // this is slightly slower
+         int64_t x[4] = { a.base.amount.value, b.quote.amount.value, b.base.amount.value, a.quote.amount.value };
+         if( x[0] > x[1] ) std::swap( x[0], x[1] );
+         if( x[2] > x[3] ) std::swap( x[2], x[3] );
+         if( (x[0] < x[2] && x[1] <= x[3]) || (x[0] == x[2] && x[1] < x[3]) )
+            return true;*/
+
+         // this is slightly faster
+         if( a.base.amount < b.base.amount && a.quote.amount >= b.quote.amount )
+            return true;
+         if( a.base.amount < a.quote.amount && b.base.amount >= b.quote.amount )
+            return true;
+
          const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
          const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
 
          return amult < bmult;
+
+         // this is much slower
+         //boost::rational< int128_t > arat( a.base.amount.value, a.quote.amount.value ); // normalization
+         //boost::rational< int128_t > brat( b.base.amount.value, b.quote.amount.value ); // normalization
+         //return arat < brat;
       }
 
       bool operator <= ( const price& a, const price& b )
       {
-         return (a == b) || (a < b);
+         return !(b < a);
       }
 
       bool operator != ( const price& a, const price& b )
@@ -65,7 +88,7 @@ namespace graphene { namespace chain {
 
       bool operator > ( const price& a, const price& b )
       {
-         return !(a <= b);
+         return (b < a);
       }
 
       bool operator >= ( const price& a, const price& b )
@@ -115,11 +138,20 @@ namespace graphene { namespace chain {
       price operator / ( const asset& base, const asset& quote )
       { try {
          FC_ASSERT( base.asset_id != quote.asset_id );
-         return price{base,quote};
+         return price( base, quote );
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
-      price price::max( asset_id_type base, asset_id_type quote ) { return asset( share_type(GRAPHENE_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
-      price price::min( asset_id_type base, asset_id_type quote ) { return asset( 1, base ) / asset( GRAPHENE_MAX_SHARE_SUPPLY, quote); }
+      price price::max( asset_id_type base, asset_id_type quote )
+      { try {
+         FC_ASSERT( base != quote );
+         return price( asset( GRAPHENE_MAX_SHARE_SUPPLY, base ), asset( 1, quote ), false );
+      } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
+
+      price price::min( asset_id_type base, asset_id_type quote )
+      { try {
+         FC_ASSERT( base != quote );
+         return price( asset( 1, base ), asset( GRAPHENE_MAX_SHARE_SUPPLY, quote ), false );
+      } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
       price operator *  ( const price& p, const ratio_type& r )
       { try {
