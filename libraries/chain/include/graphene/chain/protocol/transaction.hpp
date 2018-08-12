@@ -175,6 +175,7 @@ namespace graphene { namespace chain {
       void clear() { operations.clear(); signatures.clear(); }
    };
 
+   struct processed_transaction_with_signees;
    /**
     *  @brief extract public keys from signatures of a transaction
     */
@@ -196,6 +197,8 @@ namespace graphene { namespace chain {
          if( signees.empty() && !signatures.empty() )
             signees = signed_transaction::get_signature_keys( chain_id );
       }
+
+      signed_transaction_with_signees( const processed_transaction_with_signees& tx );
 
       virtual ~signed_transaction_with_signees() {}
 

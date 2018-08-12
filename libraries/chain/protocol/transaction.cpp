@@ -387,4 +387,8 @@ void signed_transaction::verify_authority(
    graphene::chain::verify_authority( operations, get_signature_keys( chain_id ), get_active, get_owner, max_recursion );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
+signed_transaction_with_signees::signed_transaction_with_signees( const processed_transaction_with_signees& tx )
+: signed_transaction(tx), signees( tx.signees )
+{}
+
 } } // graphene::chain
