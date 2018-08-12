@@ -185,8 +185,17 @@ namespace graphene { namespace chain {
       signed_transaction_with_signees( const signed_transaction& tx ) : signed_transaction(tx) {}
 
       signed_transaction_with_signees( const signed_transaction& tx, const chain_id_type& chain_id )
-      : signed_transaction(tx), signees( get_signature_keys( chain_id ) )
-      {}
+      : signed_transaction(tx)
+      {
+         signees = signed_transaction::get_signature_keys( chain_id );
+      }
+
+      signed_transaction_with_signees( const signed_transaction_with_signees& tx, const chain_id_type& chain_id )
+      : signed_transaction_with_signees(tx)
+      {
+         if( signees.empty() && !signatures.empty() )
+            signees = signed_transaction::get_signature_keys( chain_id );
+      }
 
       virtual ~signed_transaction_with_signees() {}
 
@@ -249,8 +258,17 @@ namespace graphene { namespace chain {
       {}
 
       processed_transaction_with_signees( const processed_transaction& tx, const chain_id_type& chain_id )
-      : processed_transaction(tx), signees( get_signature_keys( chain_id ) )
-      {}
+      : processed_transaction(tx)
+      {
+         signees = signed_transaction::get_signature_keys( chain_id );
+      }
+
+      processed_transaction_with_signees( const processed_transaction_with_signees& tx, const chain_id_type& chain_id )
+      : processed_transaction_with_signees(tx)
+      {
+         if( signees.empty() && !signatures.empty() )
+            signees = signed_transaction::get_signature_keys( chain_id );
+      }
 
       virtual ~processed_transaction_with_signees() {}
 
