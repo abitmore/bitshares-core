@@ -360,7 +360,7 @@ signed_block database::_generate_block(
    // pop pending state (reset to head block state)
    for( const processed_transaction_with_signees& tx : _pending_tx )
    {
-      size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
+      size_t new_total_size = total_block_size + fc::raw::pack_size( (const processed_transaction&)tx );
 
       // postpone transaction if it would make block too big
       if( new_total_size >= maximum_block_size )
@@ -378,7 +378,7 @@ signed_block database::_generate_block(
          // We have to recompute pack_size(ptx) because it may be different
          // than pack_size(tx) (i.e. if one or more results increased
          // their size)
-         total_block_size += fc::raw::pack_size( ptx );
+         total_block_size += fc::raw::pack_size( (const processed_transaction&)ptx );
          pending_block.transactions.push_back( ptx );
       }
       catch ( const fc::exception& e )
