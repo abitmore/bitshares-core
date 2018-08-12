@@ -1921,7 +1921,7 @@ BOOST_AUTO_TEST_CASE(zero_second_vbo)
          asset_reserve_operation op;
          op.payer = alice_id;
          op.amount_to_reserve = asset(int64_t(100000) * 1000 * 1000 * 1000);
-         transaction tx;
+         signed_transaction tx;
          tx.operations.push_back( op );
          set_expiration( db, tx );
          db.push_transaction( tx, database::skip_authority_check | database::skip_tapos_check | database::skip_transaction_signatures );

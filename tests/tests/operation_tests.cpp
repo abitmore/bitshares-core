@@ -1937,7 +1937,7 @@ BOOST_AUTO_TEST_CASE( reserve_asset_test )
          asset_reserve_operation op;
          op.payer = payer;
          op.amount_to_reserve = amount_to_reserve;
-         transaction tx;
+         signed_transaction tx;
          tx.operations.push_back( op );
          set_expiration( db, tx );
          db.push_transaction( tx, database::skip_authority_check | database::skip_tapos_check | database::skip_transaction_signatures );
@@ -1949,7 +1949,7 @@ BOOST_AUTO_TEST_CASE( reserve_asset_test )
          op.issuer = amount.asset_id(db).issuer;
          op.asset_to_issue = amount;
          op.issue_to_account = recipient.id;
-         transaction tx;
+         signed_transaction tx;
          tx.operations.push_back( op );
          set_expiration( db, tx );
          db.push_transaction( tx, database::skip_authority_check | database::skip_tapos_check | database::skip_transaction_signatures );
@@ -2040,7 +2040,7 @@ BOOST_AUTO_TEST_CASE( cover_with_collateral_test )
          op.funding_account = acct;
          op.delta_collateral = delta_collateral;
          op.delta_debt = delta_debt;
-         transaction tx;
+         signed_transaction tx;
          tx.operations.push_back( op );
          set_expiration( db, tx );
          db.push_transaction( tx, database::skip_authority_check | database::skip_tapos_check | database::skip_transaction_signatures );
@@ -2182,7 +2182,7 @@ BOOST_AUTO_TEST_CASE( vesting_balance_withdraw_test )
       asset amount, uint32_t vesting_seconds, uint32_t elapsed_seconds
       ) -> const vesting_balance_object&
    {
-      transaction tx;
+      signed_transaction tx;
 
       vesting_balance_create_operation create_op;
       create_op.fee = core.amount( 0 );
