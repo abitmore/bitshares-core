@@ -1730,4 +1730,52 @@ BOOST_FIXTURE_TEST_CASE( temp_account_balance, database_fixture )
    BOOST_CHECK( get_balance( GRAPHENE_TEMP_ACCOUNT, asset_id_type() ) > 0 );
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE( block_size_test, database_fixture )
+{
+   try
+   {
+      ACTORS((alice)(bob));
+
+      const fc::ecc::private_key& key = generate_private_key("null_key");
+      BOOST_TEST_MESSAGE( "Give Alice some money" );
+      transfer(committee_account, alice_id, asset(10000000));
+      generate_block();
+
+      //BOOST_TEST_MESSAGE( "Set max block size to a small value" );
+      const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
+      idump( (max_block_header_size) );
+      //db.get_global_properties().parameters.maximum_block_size;
+      const auto block_interval = db.get_global_properties().parameters.block_interval;
+
+      BOOST_TEST_MESSAGE( "start" );
+      for( uint64_t i = 1; i <= 200; ++i )
+      {
+         db.modify(db.get_global_properties(), [i,&max_block_header_size](global_property_object& p) {
+            p.parameters.maximum_block_size = max_block_header_size + i*3;
+         });
+         idump( (i)(db.get_global_properties().parameters.maximum_block_size) );
+
+         signed_transaction xfer_tx;
+         transfer_operation xfer_op;
+         xfer_op.from = alice_id;
+         xfer_op.to = bob_id;
+         xfer_op.amount = asset(i);
+         xfer_tx.operations.push_back( xfer_op );
+         xfer_tx.set_expiration( db.head_block_time() + fc::seconds( 0x1000 * block_interval ) );
+         xfer_tx.set_reference_block( db.head_block_id() );
+         sign( xfer_tx, alice_private_key );
+         PUSH_TX( db, xfer_tx, 0 );
+
+         //generate_block();
+         db.generate_block(db.get_slot_time(1), db.get_scheduled_witness(1), key, 0);
+      }
+
+   }
+   catch (fc::exception& e)
+   {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
