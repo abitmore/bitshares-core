@@ -96,15 +96,17 @@ struct proposal_operation_hardfork_visitor
    }
    // loop and self visit in proposals
    void operator()(const graphene::chain::proposal_create_operation &v) const {
-      uint32_t proposal_update_count = 0;
+      bool proposal_update_seen = false;
+      const bool nested_soft_fork = block_time > fc::time_point::now() - fc::seconds(30);
       for (const op_wrapper &op : v.proposed_ops)
       {
          op.op.visit(*this);
-         if( op.op.which() == operation::tag<proposal_update_operation>().value )
-            proposal_update_count++;
+         if( nested_soft_fork && op.op.which() == operation::tag<proposal_update_operation>().value )
+         {
+            FC_ASSERT( !proposal_update_seen, "At most one proposal update can be nested in a proposal!" );
+            proposal_update_seen = true;
+         }
       }
-      if( block_time > fc::time_point::now() - fc::seconds(30) ) // SOFT FORK
-         FC_ASSERT( proposal_update_count <= 1, "At most one proposal update can be nested in a proposal!" );
    }
 };
 
