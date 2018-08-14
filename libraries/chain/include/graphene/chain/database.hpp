@@ -538,6 +538,9 @@ namespace graphene { namespace chain {
           */
          bool                              _opened = false;
 
+         // Counts nested proposal updates
+         uint32_t                           _push_proposal_nesting_depth = 0;
+
          /// Tracks assets affected by bitshares-core issue #453 before hard fork #615 in one block
          flat_set<asset_id_type>           _issue_453_affected_assets;
 
@@ -550,6 +553,7 @@ namespace graphene { namespace chain {
          const chain_property_object*           _p_chain_property_obj      = nullptr;
          const witness_schedule_object*         _p_witness_schedule_obj    = nullptr;
          ///@}
+
    };
 
    namespace detail
