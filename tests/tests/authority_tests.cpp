@@ -1449,6 +1449,8 @@ BOOST_FIXTURE_TEST_CASE( parent_owner_test, database_fixture )
       BOOST_CHECK( chk( tx, true, { alice_owner_pub }, { alice_owner_pub } ) );
       BOOST_CHECK( chk( tx, true, { alice_active_pub, alice_owner_pub }, { alice_active_pub } ) );
 
+      GRAPHENE_REQUIRE_THROW( tx.verify_authority( db.get_chain_id(), get_active, get_owner, false ), tx_missing_owner_auth );
+
       sign( tx, alice_owner_key );
       GRAPHENE_REQUIRE_THROW( tx.verify_authority( db.get_chain_id(), get_active, get_owner, false ), fc::exception );
       tx.verify_authority( db.get_chain_id(), get_active, get_owner, true );
@@ -1457,6 +1459,8 @@ BOOST_FIXTURE_TEST_CASE( parent_owner_test, database_fixture )
       sign( tx, alice_active_key );
       tx.verify_authority( db.get_chain_id(), get_active, get_owner, false );
       tx.verify_authority( db.get_chain_id(), get_active, get_owner, true );
+
+      // TODO add proposal tests
 
    }
    catch(fc::exception& e)
