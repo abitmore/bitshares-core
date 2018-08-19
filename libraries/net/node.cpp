@@ -490,10 +490,12 @@ namespace graphene { namespace net { namespace detail {
     {
       VERIFY_CORRECT_THREAD();
       dlog( "requesting item ${item_hash} from peer ${endpoint}", ("item_hash", item_to_request )("endpoint", peer->get_remote_endpoint() ) );
-      item_id item_id_to_request( graphene::net::block_message_type, item_to_request );
-      _active_sync_requests.insert( active_sync_requests_map::value_type(item_to_request, fc::time_point::now() ) );
+      item_hash_t bad_item_to_request = item_to_request;
+      bad_item_to_request._hash[4] = 0;
+      item_id item_id_to_request( graphene::net::block_message_type, bad_item_to_request );
+      _active_sync_requests.insert( active_sync_requests_map::value_type(bad_item_to_request, fc::time_point::now() ) );
       peer->last_sync_item_received_time = fc::time_point::now();
-      peer->sync_items_requested_from_peer.insert(item_to_request);
+      peer->sync_items_requested_from_peer.insert(bad_item_to_request);
       peer->send_message( fetch_items_message(item_id_to_request.item_type, std::vector<item_hash_t>{item_id_to_request.item_hash} ) );
     }
 
@@ -502,13 +504,18 @@ namespace graphene { namespace net { namespace detail {
       VERIFY_CORRECT_THREAD();
       dlog( "requesting ${item_count} item(s) ${items_to_request} from peer ${endpoint}",
             ("item_count", items_to_request.size())("items_to_request", items_to_request)("endpoint", peer->get_remote_endpoint()) );
+      std::vector<item_hash_t> bad_items_to_request;
+      bad_items_to_request.reserve( items_to_request.size() );
       for (const item_hash_t& item_to_request : items_to_request)
       {
-        _active_sync_requests.insert( active_sync_requests_map::value_type(item_to_request, fc::time_point::now() ) );
+        item_hash_t bad_item_to_request = item_to_request;
+        bad_item_to_request._hash[4] = 0;
+        bad_items_to_request.push_back(bad_item_to_request);
+        _active_sync_requests.insert( active_sync_requests_map::value_type(bad_item_to_request, fc::time_point::now() ) );
         peer->last_sync_item_received_time = fc::time_point::now();
-        peer->sync_items_requested_from_peer.insert(item_to_request);
+        peer->sync_items_requested_from_peer.insert(bad_item_to_request);
       }
-      peer->send_message(fetch_items_message(graphene::net::block_message_type, items_to_request));
+      peer->send_message(fetch_items_message(graphene::net::block_message_type, bad_items_to_request));
     }
 
     void node_impl::fetch_sync_items_loop()
