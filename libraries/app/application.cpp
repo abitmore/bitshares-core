@@ -517,9 +517,21 @@ bool application_impl::handle_block(const graphene::net::block_message& blk_msg,
       // you can help the network code out by throwing a block_older_than_undo_history exception.
       // when the net code sees that, it will stop trying to push blocks from that chain, but
       // leave that peer connected so that they can get sync blocks from us
-      bool result = _chain_db->push_block( blk_msg.block,
-                                           (_is_block_producer | _force_validate) ?
-                                              database::skip_nothing : database::skip_transaction_signatures );
+      bool result;
+      if( (_is_block_producer | _force_validate) && !blk_msg.block.transactions.empty() )
+      {
+         signed_block block_with_trx_signees = blk_msg.block;
+         const chain_id_type chain_id = get_chain_id();
+         for( processed_transaction_with_signees& trx : block_with_trx_signees.transactions )
+         {
+            trx.signees = ((processed_transaction&)trx).get_signature_keys( chain_id );
+         }
+         result = _chain_db->push_block( block_with_trx_signees, database::skip_nothing );
+      }
+      else
+      {
+         result = _chain_db->push_block( blk_msg.block, database::skip_transaction_signatures );
+      }
 
       // the block was accepted, so we now know all of the transactions contained in the block
       if (!sync_mode)
