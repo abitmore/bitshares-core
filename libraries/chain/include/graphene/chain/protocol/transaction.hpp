@@ -293,4 +293,4 @@ FC_REFLECT( graphene::chain::transaction, (ref_block_num)(ref_block_prefix)(expi
 FC_REFLECT_DERIVED( graphene::chain::signed_transaction, (graphene::chain::transaction), (signatures) )
 FC_REFLECT_DERIVED( graphene::chain::signed_transaction_with_signees, (graphene::chain::signed_transaction), (signees) )
 FC_REFLECT_DERIVED( graphene::chain::processed_transaction, (graphene::chain::signed_transaction), (operation_results) )
-FC_REFLECT_DERIVED( graphene::chain::processed_transaction_with_signees, (graphene::chain::processed_transaction), (signees) )
+FC_REFLECT_DERIVED( graphene::chain::processed_transaction_with_signees, (graphene::chain::processed_transaction), )

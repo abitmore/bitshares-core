@@ -54,7 +54,7 @@ namespace graphene { namespace chain {
    struct signed_block : public signed_block_header
    {
       checksum_type calculate_merkle_root()const;
-      vector<processed_transaction> transactions;
+      vector<processed_transaction_with_signees> transactions;
    };
 
 } } // graphene::chain
