@@ -23,8 +23,6 @@
  */
 #include <graphene/chain/fork_database.hpp>
 #include <graphene/chain/exceptions.hpp>
-#include <graphene/chain/protocol/fee_schedule.hpp>
-#include <fc/smart_ref_impl.hpp>
 
 namespace graphene { namespace chain {
 fork_database::fork_database()
@@ -38,9 +36,9 @@ void fork_database::reset()
 
 void fork_database::pop_block()
 {
-   FC_ASSERT( _head, "no blocks to pop" );
+   FC_ASSERT( _head, "no block to pop" );
    auto prev = _head->prev.lock();
-   FC_ASSERT( prev, "poping block would leave head block null" );
+   FC_ASSERT( prev, "popping block would leave head block null" );
     _head = prev;
 }
 
@@ -247,6 +245,10 @@ void fork_database::set_head(shared_ptr<fork_item> h)
 void fork_database::remove(block_id_type id)
 {
    _index.get<block_id>().erase(id);
+   if( _head && _head->id == id )
+   {
+      pop_block();
+   }
 }
 
 } } // graphene::chain
