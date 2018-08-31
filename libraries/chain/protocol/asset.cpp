@@ -115,17 +115,20 @@ namespace graphene { namespace chain {
          auto ocp = cp;
 
          bool shrinked = false;
+         bool using_max = false;
          static const int128_t max( GRAPHENE_MAX_SHARE_SUPPLY );
          while( cp.numerator() > max || cp.denominator() > max )
          {
             if( cp.numerator() == 1 )
             {
                cp = boost::rational<int128_t>( 1, max );
+               using_max = true;
                break;
             }
             else if( cp.denominator() == 1 )
             {
                cp = boost::rational<int128_t>( max, 1 );
+               using_max = true;
                break;
             }
             else
@@ -168,10 +171,13 @@ namespace graphene { namespace chain {
          price np = asset( cp.numerator().convert_to<int64_t>(), p.base.asset_id )
                   / asset( cp.denominator().convert_to<int64_t>(), p.quote.asset_id );
 
-         if( ( r.numerator() > r.denominator() && np < p )
-               || ( r.numerator() < r.denominator() && np > p ) )
-            // even with an accurate result, if p is out of valid range, return it
-            np = p;
+         if( shrinked || using_max )
+         {
+            if( ( r.numerator() > r.denominator() && np < p )
+                  || ( r.numerator() < r.denominator() && np > p ) )
+               // even with an accurate result, if p is out of valid range, return it
+               np = p;
+         }
 
          np.validate();
          return np;
@@ -197,11 +203,11 @@ namespace graphene { namespace chain {
        *  never go to 0 and the debt can never go more than GRAPHENE_MAX_SHARE_SUPPLY
        *
        *  CR * DEBT/COLLAT or DEBT/(COLLAT/CR)
+       *
+       *  Note: this function is only used before core-1270 hard fork.
        */
       price price::call_price( const asset& debt, const asset& collateral, uint16_t collateral_ratio)
       { try {
-         // TODO replace the calculation with new operator*() and/or operator/(), could be a hardfork change due to edge cases
-         //wdump((debt)(collateral)(collateral_ratio));
          boost::rational<int128_t> swan(debt.amount.value,collateral.amount.value);
          boost::rational<int128_t> ratio( collateral_ratio, GRAPHENE_COLLATERAL_RATIO_DENOM );
          auto cp = swan * ratio;
@@ -209,7 +215,8 @@ namespace graphene { namespace chain {
          while( cp.numerator() > GRAPHENE_MAX_SHARE_SUPPLY || cp.denominator() > GRAPHENE_MAX_SHARE_SUPPLY )
             cp = boost::rational<int128_t>( (cp.numerator() >> 1)+1, (cp.denominator() >> 1)+1 );
 
-         return ~(asset( cp.numerator().convert_to<int64_t>(), debt.asset_id ) / asset( cp.denominator().convert_to<int64_t>(), collateral.asset_id ));
+         return ~(  asset( cp.numerator().convert_to<int64_t>(), debt.asset_id )
+                  / asset( cp.denominator().convert_to<int64_t>(), collateral.asset_id ) );
       } FC_CAPTURE_AND_RETHROW( (debt)(collateral)(collateral_ratio) ) }
 
       bool price::is_null() const
@@ -233,9 +240,11 @@ namespace graphene { namespace chain {
          FC_ASSERT( maximum_short_squeeze_ratio <= GRAPHENE_MAX_COLLATERAL_RATIO );
          FC_ASSERT( maintenance_collateral_ratio >= GRAPHENE_MIN_COLLATERAL_RATIO );
          FC_ASSERT( maintenance_collateral_ratio <= GRAPHENE_MAX_COLLATERAL_RATIO );
-         max_short_squeeze_price(); // make sure that it doesn't overflow
+         // Note: there was code here calling `max_short_squeeze_price();` before core-1270 hard fork,
+         //       in order to make sure that it doesn't overflow,
+         //       but the code doesn't actually check overflow, and it won't overflow, so the code is removed.
 
-         //FC_ASSERT( maintenance_collateral_ratio >= maximum_short_squeeze_ratio );
+         // Note: not checking `maintenance_collateral_ratio >= maximum_short_squeeze_ratio` since launch
       } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
       bool price_feed::is_for( asset_id_type asset_id ) const
@@ -252,17 +261,34 @@ namespace graphene { namespace chain {
          FC_CAPTURE_AND_RETHROW( (*this) )
       }
 
-      price price_feed::max_short_squeeze_price()const
+      // This function is kept here due to potential different behavior in edge cases.
+      // TODO check after core-1270 hard fork to see if we can safely remove it
+      price price_feed::max_short_squeeze_price_before_hf_1270()const
       {
-         // TODO replace the calculation with new operator*() and/or operator/(), could be a hardfork change due to edge cases
-         boost::rational<int128_t> sp( settlement_price.base.amount.value, settlement_price.quote.amount.value ); //debt.amount.value,collateral.amount.value);
+         // settlement price is in debt/collateral
+         boost::rational<int128_t> sp( settlement_price.base.amount.value, settlement_price.quote.amount.value );
          boost::rational<int128_t> ratio( GRAPHENE_COLLATERAL_RATIO_DENOM, maximum_short_squeeze_ratio );
          auto cp = sp * ratio;
 
          while( cp.numerator() > GRAPHENE_MAX_SHARE_SUPPLY || cp.denominator() > GRAPHENE_MAX_SHARE_SUPPLY )
-            cp = boost::rational<int128_t>( (cp.numerator() >> 1)+(cp.numerator()&1), (cp.denominator() >> 1)+(cp.denominator()&1) );
+            cp = boost::rational<int128_t>( (cp.numerator() >> 1)+(cp.numerator()&1),
+                                            (cp.denominator() >> 1)+(cp.denominator()&1) );
 
-         return (asset( cp.numerator().convert_to<int64_t>(), settlement_price.base.asset_id ) / asset( cp.denominator().convert_to<int64_t>(), settlement_price.quote.asset_id ));
+         return (  asset( cp.numerator().convert_to<int64_t>(), settlement_price.base.asset_id )
+                 / asset( cp.denominator().convert_to<int64_t>(), settlement_price.quote.asset_id ) );
+      }
+
+      price price_feed::max_short_squeeze_price()const
+      {
+         // settlement price is in debt/collateral
+         return settlement_price * ratio_type( GRAPHENE_COLLATERAL_RATIO_DENOM, maximum_short_squeeze_ratio );
+      }
+
+      price price_feed::maintenance_collateralization()const
+      {
+         if( settlement_price.is_null() )
+            return price();
+         return ~settlement_price * ratio_type( maintenance_collateral_ratio, GRAPHENE_COLLATERAL_RATIO_DENOM );
       }
 
 // compile-time table of powers of 10 using template metaprogramming

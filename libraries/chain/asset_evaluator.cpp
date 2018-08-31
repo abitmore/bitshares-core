@@ -638,7 +638,7 @@ static bool update_bitasset_object_options(
       const asset_update_bitasset_operation& op, database& db,
       asset_bitasset_data_object& bdo, const asset_object& asset_to_update )
 {
-   const fc::time_point_sec& next_maint_time = db.get_dynamic_global_properties().next_maintenance_time;
+   const fc::time_point_sec next_maint_time = db.get_dynamic_global_properties().next_maintenance_time;
    bool after_hf_core_868_890 = ( next_maint_time > HARDFORK_CORE_868_890_TIME );
 
    // If the minimum number of feeds to calculate a median has changed, we need to recalculate the median
@@ -689,7 +689,7 @@ static bool update_bitasset_object_options(
    if( should_update_feeds )
    {
       const auto old_feed = bdo.current_feed;
-      bdo.update_median_feeds( db.head_block_time() );
+      bdo.update_median_feeds( db.head_block_time(), next_maint_time );
 
       // TODO review and refactor / cleanup after hard fork:
       //      1. if hf_core_868_890 and core-935 occurred at same time
@@ -730,7 +730,8 @@ void_result asset_update_bitasset_evaluator::do_apply(const asset_update_bitasse
       });
 
       if( to_check_call_orders )
-         db_conn.check_call_orders( asset_being_updated );
+         // Process margin calls, allow black swan, not for a new limit order
+         db_conn.check_call_orders( asset_being_updated, true, false, bitasset_to_update );
 
       return void_result();
 
@@ -741,9 +742,8 @@ void_result asset_update_feed_producers_evaluator::do_evaluate(const asset_updat
 { try {
    database& d = db();
 
-   FC_ASSERT( o.new_feed_producers.size() <= d.get_global_properties().parameters.maximum_asset_feed_publishers );
-   for( auto id : o.new_feed_producers )
-      d.get_object(id);
+   FC_ASSERT( o.new_feed_producers.size() <= d.get_global_properties().parameters.maximum_asset_feed_publishers,
+              "Cannot specify more feed producers than maximum allowed" );
 
    const asset_object& a = o.asset_to_update(d);
 
@@ -751,18 +751,34 @@ void_result asset_update_feed_producers_evaluator::do_evaluate(const asset_updat
    FC_ASSERT(!(a.options.flags & committee_fed_asset), "Cannot set feed producers on a committee-fed asset.");
    FC_ASSERT(!(a.options.flags & witness_fed_asset), "Cannot set feed producers on a witness-fed asset.");
 
-   const asset_bitasset_data_object& b = a.bitasset_data(d);
-   bitasset_to_update = &b;
-   FC_ASSERT( a.issuer == o.issuer );
+   FC_ASSERT( a.issuer == o.issuer, "Only asset issuer can update feed producers of an asset" );
+
+   asset_to_update = &a;
+
+   // Make sure all producers exist. Check these after asset because account lookup is more expensive
+   for( auto id : o.new_feed_producers )
+      d.get_object(id);
+
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
 void_result asset_update_feed_producers_evaluator::do_apply(const asset_update_feed_producers_evaluator::operation_type& o)
 { try {
-   db().modify(*bitasset_to_update, [&](asset_bitasset_data_object& a) {
+   database& d = db();
+   const auto head_time = d.head_block_time();
+   const auto next_maint_time = d.get_dynamic_global_properties().next_maintenance_time;
+   const asset_bitasset_data_object& bitasset_to_update = asset_to_update->bitasset_data(d);
+   d.modify( bitasset_to_update, [&o,head_time,next_maint_time](asset_bitasset_data_object& a) {
       //This is tricky because I have a set of publishers coming in, but a map of publisher to feed is stored.
       //I need to update the map such that the keys match the new publishers, but not munge the old price feeds from
       //publishers who are being kept.
+
+      // TODO possible performance optimization:
+      //      Since both the map and the set are ordered by account already, we can iterate through them only once
+      //      and avoid lookups while iterating by maintaining two iterators at same time.
+      //      However, this operation is not used much, and both the set and the map are small,
+      //      so likely we won't gain much with the optimization.
+
       //First, remove any old publishers who are no longer publishers
       for( auto itr = a.feeds.begin(); itr != a.feeds.end(); )
       {
@@ -772,12 +788,14 @@ void_result asset_update_feed_producers_evaluator::do_apply(const asset_update_f
             ++itr;
       }
       //Now, add any new publishers
-      for( auto itr = o.new_feed_producers.begin(); itr != o.new_feed_producers.end(); ++itr )
-         if( !a.feeds.count(*itr) )
-            a.feeds[*itr];
-      a.update_median_feeds(db().head_block_time());
+      for( const account_id_type acc : o.new_feed_producers )
+      {
+         a.feeds[acc];
+      }
+      a.update_median_feeds( head_time, next_maint_time );
    });
-   db().check_call_orders( o.asset_to_update(db()) );
+   // Process margin calls, allow black swan, not for a new limit order
+   d.check_call_orders( *asset_to_update, true, false, &bitasset_to_update );
 
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
@@ -897,7 +915,7 @@ void_result asset_publish_feeds_evaluator::do_evaluate(const asset_publish_feed_
 
    const asset_object& base = o.asset_id(d);
    //Verify that this feed is for a market-issued asset and that asset is backed by the base
-   FC_ASSERT(base.is_market_issued());
+   FC_ASSERT( base.is_market_issued(), "Can only publish price feeds for market-issued assets" );
 
    const asset_bitasset_data_object& bitasset = base.bitasset_data(d);
    if( bitasset.is_prediction_market || d.head_block_time() <= HARDFORK_CORE_216_TIME )
@@ -906,36 +924,45 @@ void_result asset_publish_feeds_evaluator::do_evaluate(const asset_publish_feed_
    }
 
    // the settlement price must be quoted in terms of the backing asset
-   FC_ASSERT( o.feed.settlement_price.quote.asset_id == bitasset.options.short_backing_asset );
+   FC_ASSERT( o.feed.settlement_price.quote.asset_id == bitasset.options.short_backing_asset,
+              "Quote asset type in settlement price should be same as backing asset of this asset" );
 
    if( d.head_block_time() > HARDFORK_480_TIME )
    {
       if( !o.feed.core_exchange_rate.is_null() )
       {
-         FC_ASSERT( o.feed.core_exchange_rate.quote.asset_id == asset_id_type() );
+         FC_ASSERT( o.feed.core_exchange_rate.quote.asset_id == asset_id_type(),
+                    "Quote asset in core exchange rate should be CORE asset" );
       }
    }
    else
    {
       if( (!o.feed.settlement_price.is_null()) && (!o.feed.core_exchange_rate.is_null()) )
       {
-         FC_ASSERT( o.feed.settlement_price.quote.asset_id == o.feed.core_exchange_rate.quote.asset_id );
+         // Old buggy code, but we have to live with it
+         FC_ASSERT( o.feed.settlement_price.quote.asset_id == o.feed.core_exchange_rate.quote.asset_id, "Bad feed" );
       }
    }
 
    //Verify that the publisher is authoritative to publish a feed
    if( base.options.flags & witness_fed_asset )
    {
-      FC_ASSERT( d.get(GRAPHENE_WITNESS_ACCOUNT).active.account_auths.count(o.publisher) );
+      FC_ASSERT( d.get(GRAPHENE_WITNESS_ACCOUNT).active.account_auths.count(o.publisher),
+                 "Only active witnesses are allowed to publish price feeds for this asset" );
    }
    else if( base.options.flags & committee_fed_asset )
    {
-      FC_ASSERT( d.get(GRAPHENE_COMMITTEE_ACCOUNT).active.account_auths.count(o.publisher) );
+      FC_ASSERT( d.get(GRAPHENE_COMMITTEE_ACCOUNT).active.account_auths.count(o.publisher),
+                 "Only active committee members are allowed to publish price feeds for this asset" );
    }
    else
    {
-      FC_ASSERT(bitasset.feeds.count(o.publisher));
+      FC_ASSERT( bitasset.feeds.count(o.publisher),
+                 "The account is not in the set of allowed price feed producers of this asset" );
    }
+
+   asset_ptr = &base;
+   bitasset_ptr = &bitasset;
 
    return void_result();
 } FC_CAPTURE_AND_RETHROW((o)) }
@@ -944,30 +971,52 @@ void_result asset_publish_feeds_evaluator::do_apply(const asset_publish_feed_ope
 { try {
 
    database& d = db();
+   const auto head_time = d.head_block_time();
+   const auto next_maint_time = d.get_dynamic_global_properties().next_maintenance_time;
 
-   const asset_object& base = o.asset_id(d);
-   const asset_bitasset_data_object& bad = base.bitasset_data(d);
+   const asset_object& base = *asset_ptr;
+   const asset_bitasset_data_object& bad = *bitasset_ptr;
 
    auto old_feed =  bad.current_feed;
    // Store medians for this asset
-   d.modify(bad , [&o,&d](asset_bitasset_data_object& a) {
-      a.feeds[o.publisher] = make_pair(d.head_block_time(), o.feed);
-      a.update_median_feeds(d.head_block_time());
+   d.modify( bad , [&o,head_time,next_maint_time](asset_bitasset_data_object& a) {
+      a.feeds[o.publisher] = make_pair( head_time, o.feed );
+      a.update_median_feeds( head_time, next_maint_time );
    });
 
    if( !(old_feed == bad.current_feed) )
    {
-      if( bad.has_settlement() ) // implies head_block_time > HARDFORK_CORE_216_TIME
+      // Check whether need to revive the asset and proceed if need
+      if( bad.has_settlement() // has globally settled, implies head_block_time > HARDFORK_CORE_216_TIME
+          && !bad.current_feed.settlement_price.is_null() ) // has a valid feed
       {
+         bool should_revive = false;
          const auto& mia_dyn = base.dynamic_asset_data_id(d);
-         if( !bad.current_feed.settlement_price.is_null()
-             && ( mia_dyn.current_supply == 0
-                  || ~price::call_price(asset(mia_dyn.current_supply, o.asset_id),
-                                        asset(bad.settlement_fund, bad.options.short_backing_asset),
-                                        bad.current_feed.maintenance_collateral_ratio ) < bad.current_feed.settlement_price ) )
+         if( mia_dyn.current_supply == 0 ) // if current supply is zero, revive the asset
+            should_revive = true;
+         else // if current supply is not zero, when collateral ratio of settlement fund is greater than MCR, revive the asset
+         {
+            if( next_maint_time <= HARDFORK_CORE_1270_TIME )
+            {
+               // before core-1270 hard fork, calculate call_price and compare to median feed
+               if( ~price::call_price( asset(mia_dyn.current_supply, o.asset_id),
+                                       asset(bad.settlement_fund, bad.options.short_backing_asset),
+                                       bad.current_feed.maintenance_collateral_ratio ) < bad.current_feed.settlement_price )
+                  should_revive = true;
+            }
+            else
+            {
+               // after core-1270 hard fork, calculate collateralization and compare to maintenance_collateralization
+               if( price( asset( bad.settlement_fund, bad.options.short_backing_asset ),
+                          asset( mia_dyn.current_supply, o.asset_id ) ) > bad.current_maintenance_collateralization )
+                  should_revive = true;
+            }
+         }
+         if( should_revive )
             d.revive_bitasset(base);
       }
-      db().check_call_orders(base);
+      // Process margin calls, allow black swan, not for a new limit order
+      d.check_call_orders( base, true, false, bitasset_ptr );
    }
 
    return void_result();

@@ -171,21 +171,16 @@ void_result call_order_update_evaluator::do_evaluate(const call_order_update_ope
 
    /// if there is a settlement for this asset, then no further margin positions may be taken and
    /// all existing margin positions should have been closed va database::globally_settle_asset
-   FC_ASSERT( !_bitasset_data->has_settlement() );
+   FC_ASSERT( !_bitasset_data->has_settlement(), "Cannot update debt position when the asset has been globally settled" );
 
-   FC_ASSERT( o.delta_collateral.asset_id == _bitasset_data->options.short_backing_asset );
+   FC_ASSERT( o.delta_collateral.asset_id == _bitasset_data->options.short_backing_asset,
+              "Collateral asset type should be same as backing asset of debt asset" );
 
    if( _bitasset_data->is_prediction_market )
-      FC_ASSERT( o.delta_collateral.amount == o.delta_debt.amount );
+      FC_ASSERT( o.delta_collateral.amount == o.delta_debt.amount,
+                 "Debt amount and collateral amount should be same when updating debt position in a prediction market" );
    else if( _bitasset_data->current_feed.settlement_price.is_null() )
       FC_THROW_EXCEPTION(insufficient_feeds, "Cannot borrow asset with no price feed.");
-
-   if( o.delta_collateral.amount > 0 )
-   {
-      FC_ASSERT( d.get_balance(*_paying_account, _bitasset_data->options.short_backing_asset(d)) >= o.delta_collateral,
-                 "Cannot increase collateral by ${c} when payer only has ${b}", ("c", o.delta_collateral.amount)
-                 ("b", d.get_balance(*_paying_account, o.delta_collateral.asset_id(d)).amount) );
-   }
 
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
@@ -197,7 +192,7 @@ void_result call_order_update_evaluator::do_apply(const call_order_update_operat
 
    if( o.delta_debt.amount != 0 )
    {
-      d.adjust_balance( o.funding_account,  o.delta_debt        );
+      d.adjust_balance( o.funding_account, o.delta_debt );
 
       // Deduct the debt paid from the total supply of the debt asset.
       d.modify(_debt_asset->dynamic_asset_data_id(d), [&](asset_dynamic_data_object& dynamic_asset) {
@@ -219,6 +214,8 @@ void_result call_order_update_evaluator::do_apply(const call_order_update_operat
       }
    }
 
+   const auto next_maint_time = d.get_dynamic_global_properties().next_maintenance_time;
+   bool before_core_hardfork_1270 = ( next_maint_time <= HARDFORK_CORE_1270_TIME ); // call price caching issue
 
    auto& call_idx = d.get_index_type<call_order_index>().indices().get<by_account>();
    auto itr = call_idx.find( boost::make_tuple(o.funding_account, o.delta_debt.asset_id) );
@@ -227,53 +224,53 @@ void_result call_order_update_evaluator::do_apply(const call_order_update_operat
    optional<price> old_collateralization;
    optional<share_type> old_debt;
 
-   optional<uint16_t> new_target_cr = o.extensions.value.target_collateral_ratio;
-
-   if( itr == call_idx.end() )
+   if( itr == call_idx.end() ) // creating new debt position
    {
-      FC_ASSERT( o.delta_collateral.amount > 0 );
-      FC_ASSERT( o.delta_debt.amount > 0 );
+      FC_ASSERT( o.delta_collateral.amount > 0, "Delta collateral amount of new debt position should be positive" );
+      FC_ASSERT( o.delta_debt.amount > 0, "Delta debt amount of new debt position should be positive" );
 
-      call_obj = &d.create<call_order_object>( [&](call_order_object& call ){
+      call_obj = &d.create<call_order_object>( [&o,this,before_core_hardfork_1270]( call_order_object& call ){
          call.borrower = o.funding_account;
          call.collateral = o.delta_collateral.amount;
          call.debt = o.delta_debt.amount;
-         call.call_price = price::call_price(o.delta_debt, o.delta_collateral,
-                                             _bitasset_data->current_feed.maintenance_collateral_ratio);
-         call.target_collateral_ratio = new_target_cr;
+         if( before_core_hardfork_1270 ) // before core-1270 hard fork, calculate call_price here and cache it
+            call.call_price = price::call_price( o.delta_debt, o.delta_collateral,
+                                                 _bitasset_data->current_feed.maintenance_collateral_ratio );
+         else // after core-1270 hard fork, set call_price to 1
+            call.call_price = price( asset( 1, o.delta_collateral.asset_id ), asset( 1, o.delta_debt.asset_id ) );
+         call.target_collateral_ratio = o.extensions.value.target_collateral_ratio;
       });
    }
-   else
+   else // updating existing debt position
    {
       call_obj = &*itr;
+      auto new_collateral = call_obj->collateral + o.delta_collateral.amount;
+      auto new_debt = call_obj->debt + o.delta_debt.amount;
+
+      if( new_debt == 0 )
+      {
+         FC_ASSERT( new_collateral == 0, "Should claim all collateral when closing debt position" );
+         d.remove( *call_obj );
+         return void_result();
+      }
+
+      FC_ASSERT( new_collateral > 0 && new_debt > 0,
+                 "Both collateral and debt should be positive after updated a debt position if not to close it" );
+
       old_collateralization = call_obj->collateralization();
       old_debt = call_obj->debt;
-      auto new_collateral = call_obj->collateral + o.delta_collateral.amount;
-      auto new_debt = *old_debt + o.delta_debt.amount;
 
-      // Forbid zero collateral with nonzero debt (avoids divide by zero when calculating call price below)
-      FC_ASSERT(!(new_collateral == 0 && new_debt != 0), "Cannot have zero collateral and nonzero debt");
-
-      d.modify( *call_obj, [&]( call_order_object& call ){
-         call.collateral += o.delta_collateral.amount;
-         call.debt       += o.delta_debt.amount;
-         if( call.debt > 0 )
+      d.modify( *call_obj, [&o,new_debt,new_collateral,this,before_core_hardfork_1270]( call_order_object& call ){
+         call.collateral = new_collateral;
+         call.debt       = new_debt;
+         if( before_core_hardfork_1270 ) // don't update call_price after core-1270 hard fork
          {
             call.call_price  =  price::call_price(call.get_debt(), call.get_collateral(),
                                                   _bitasset_data->current_feed.maintenance_collateral_ratio);
          }
-         call.target_collateral_ratio = new_target_cr;
+         call.target_collateral_ratio = o.extensions.value.target_collateral_ratio;
       });
    }
-
-   if( call_obj->debt == 0 )
-   {
-      FC_ASSERT( call_obj->collateral == 0 );
-      d.remove( *call_obj );
-      return void_result();
-   }
-
-   FC_ASSERT(call_obj->collateral > 0 && call_obj->debt > 0);
 
    // then we must check for margin calls and other issues
    if( !_bitasset_data->is_prediction_market )
@@ -282,37 +279,39 @@ void_result call_order_update_evaluator::do_apply(const call_order_update_operat
 
       // check to see if the order needs to be margin called now, but don't allow black swans and require there to be
       // limit orders available that could be used to fill the order.
-      // Note: due to https://github.com/bitshares/bitshares-core/issues/649,
+      // Note: due to https://github.com/bitshares/bitshares-core/issues/649, before core-343 hard fork,
       //       the first call order may be unable to be updated if the second one is undercollateralized.
-      if( d.check_call_orders( *_debt_asset, false ) )
+      if( d.check_call_orders( *_debt_asset, false, false, _bitasset_data ) ) // don't allow black swan, not for new limit order
       {
-         const auto call_obj  = d.find(call_order_id);
+         const auto remaining_call_obj = d.find(call_order_id);
          // before hard fork core-583: if we filled at least one call order, we are OK if we totally filled.
          // after hard fork core-583: we want to allow increasing collateral
          //   Note: increasing collateral won't get the call order itself matched (instantly margin called)
          //   if there is at least a call order get matched but didn't cause a black swan event,
          //   current order must have got matched. in this case, it's OK if it's totally filled.
          GRAPHENE_ASSERT(
-            !call_obj,
+            !remaining_call_obj,
             call_order_update_unfilled_margin_call,
-            "Updating call order would trigger a margin call that cannot be fully filled",
-            ("a", ~call_obj->call_price )("b", _bitasset_data->current_feed.settlement_price)
+            "Updating call order would trigger a margin call that cannot be fully filled"
             );
       }
       else
       {
-         const auto call_obj  = d.find(call_order_id);
+         const auto remaining_call_obj = d.find(call_order_id);
          // we know no black swan event has occurred
-         FC_ASSERT( call_obj, "no margin call was executed and yet the call object was deleted" );
+         FC_ASSERT( remaining_call_obj, "no margin call was executed and yet the call object was deleted" );
+         // we know remaining_call_obj and call_obj are the same
          if( d.head_block_time() <= HARDFORK_CORE_583_TIME ) // TODO remove after hard fork core-583
          {
             // We didn't fill any call orders.  This may be because we
             // aren't in margin call territory, or it may be because there
             // were no matching orders.  In the latter case, we throw.
             GRAPHENE_ASSERT(
+               // we know core-583 hard fork is before core-1270 hard fork, it's ok to use call_price here
                ~call_obj->call_price < _bitasset_data->current_feed.settlement_price,
                call_order_update_unfilled_margin_call,
                "Updating call order would trigger a margin call that cannot be fully filled",
+               // we know core-583 hard fork is before core-1270 hard fork, it's ok to use call_price here
                ("a", ~call_obj->call_price )("b", _bitasset_data->current_feed.settlement_price)
                );
          }
@@ -324,12 +323,13 @@ void_result call_order_update_evaluator::do_apply(const call_order_update_operat
             // if collateral ratio is not increased or debt is increased, we throw.
             // be here, we know no margin call was executed,
             // so call_obj's collateral ratio should be set only by op
-            FC_ASSERT( ( old_collateralization.valid() && call_obj->debt <= *old_debt
-                                                       && call_obj->collateralization() > *old_collateralization )
-                       || ~call_obj->call_price < _bitasset_data->current_feed.settlement_price,
-               "Can only increase collateral ratio without increasing debt if would trigger a margin call that cannot be fully filled",
-               ("new_call_price", ~call_obj->call_price )
-               ("settlement_price", _bitasset_data->current_feed.settlement_price)
+            FC_ASSERT( ( !before_core_hardfork_1270
+                            && call_obj->collateralization() > _bitasset_data->current_maintenance_collateralization )
+                       || ( before_core_hardfork_1270 && ~call_obj->call_price < _bitasset_data->current_feed.settlement_price )
+                       || ( old_collateralization.valid() && call_obj->debt <= *old_debt
+                                                          && call_obj->collateralization() > *old_collateralization ),
+               "Can only increase collateral ratio without increasing debt if would trigger a margin call that "
+               "cannot be fully filled",
                ("old_debt", old_debt)
                ("new_debt", call_obj->debt)
                ("old_collateralization", old_collateralization)
@@ -395,6 +395,8 @@ void_result bid_collateral_evaluator::do_apply(const bid_collateral_operation& o
       bid.bidder = o.bidder;
       bid.inv_swan_price = o.additional_collateral / o.debt_covered;
    });
+
+   // Note: CORE asset in collateral_bid_object is not counted in account_stats.total_core_in_orders
 
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }

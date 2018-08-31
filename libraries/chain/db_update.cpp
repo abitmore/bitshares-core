@@ -204,9 +204,12 @@ bool database::check_for_blackswan( const asset_object& mia, bool enable_black_s
 
     const auto& dyn_prop = get_dynamic_global_properties();
     auto maint_time = dyn_prop.next_maintenance_time;
-    if( maint_time > HARDFORK_CORE_338_TIME )
+    if( maint_time > HARDFORK_CORE_1270_TIME )
        // due to #338, we won't check for black swan on incoming limit order, so need to check with MSSP here
        highest = bitasset.current_feed.max_short_squeeze_price();
+    else if( maint_time > HARDFORK_CORE_338_TIME )
+       // due to #338, we won't check for black swan on incoming limit order, so need to check with MSSP here
+       highest = bitasset.current_feed.max_short_squeeze_price_before_hf_1270();
 
     const limit_order_index& limit_index = get_index_type<limit_order_index>();
     const auto& limit_price_index = limit_index.indices().get<by_price>();
@@ -458,6 +461,7 @@ void database::clear_expired_orders()
 void database::update_expired_feeds()
 {
    const auto head_time = head_block_time();
+   const auto next_maint_time = get_dynamic_global_properties().next_maintenance_time;
    bool after_hardfork_615 = ( head_time >= HARDFORK_615_TIME );
 
    const auto& idx = get_index_type<asset_bitasset_data_index>().indices().get<by_feed_expiration>();
@@ -472,9 +476,9 @@ void database::update_expired_feeds()
       if( after_hardfork_615 || b.feed_is_expired_before_hardfork_615( head_time ) )
       {
          auto old_median_feed = b.current_feed;
-         modify( b, [head_time,&update_cer]( asset_bitasset_data_object& abdo )
+         modify( b, [head_time,next_maint_time,&update_cer]( asset_bitasset_data_object& abdo )
          {
-            abdo.update_median_feeds( head_time );
+            abdo.update_median_feeds( head_time, next_maint_time );
             if( abdo.need_to_update_cer() )
             {
                update_cer = true;
