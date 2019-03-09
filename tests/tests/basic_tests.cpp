@@ -607,4 +607,66 @@ BOOST_AUTO_TEST_CASE( bitasset_feed_expiration_test )
    BOOST_CHECK( !o.feed_is_expired( now ) );
 }
 
+BOOST_AUTO_TEST_CASE( optional_exception_test )
+{
+  try {
+   int a = 1;
+   idump((a));
+   try {
+      throw graphene::chain::unlinkable_block_exception();
+   }FC_CAPTURE_LOG_AND_RETHROW( (a) )
+
+  }
+  catch (graphene::chain::unlinkable_block_exception& e)
+  {
+      elog("caught unlinkable block excpetion");
+      elog( "${e}", ("e",e.to_detail_string()) );
+  }
+  catch (fc::exception& e)
+  {
+      elog("caught fc::exception");
+      edump((e));
+  }
+
+  try {
+   int a = 2;
+   idump((a));
+   try {
+      throw graphene::chain::unlinkable_block_exception();
+   }FC_CAPTURE_AND_RETHROW( (a) )
+
+  }
+  catch (graphene::chain::unlinkable_block_exception& e)
+  {
+      elog("caught unlinkable block excpetion");
+      elog( "${e}", ("e",e.to_detail_string()) );
+  }
+  catch (fc::exception& e)
+  {
+      elog("caught fc::exception");
+      edump((e));
+  }
+
+  try {
+   int a = 3;
+   idump((a));
+
+      fc::optional<fc::exception> oe;
+      oe = graphene::chain::unlinkable_block_exception();
+      throw *oe;
+
+  }
+  catch (graphene::chain::unlinkable_block_exception& e)
+  {
+      elog("caught unlinkable block excpetion");
+      elog( "${e}", ("e",e.to_detail_string()) );
+  }
+  catch (fc::exception& e)
+  {
+      elog("caught fc::exception");
+      edump((e));
+  }
+ 
+}
+
 BOOST_AUTO_TEST_SUITE_END()
