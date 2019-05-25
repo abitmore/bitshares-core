@@ -323,6 +323,85 @@ BOOST_AUTO_TEST_CASE(asset_rewards_test)
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(reward_percent_test)
+{
+   try
+   {
+      ACTORS((alice)(bob)(izzy)(jill)(feeder1)(feeder2));
+
+      transfer( committee_account, alice_id, core_asset(1000000000) );
+      transfer( committee_account, bob_id, core_asset(1000000) );
+      transfer( committee_account, izzy_id, core_asset(1000000) );
+      transfer( committee_account, jill_id, core_asset(1000000) );
+      transfer( committee_account, feeder1_id, core_asset(1000000) );
+      transfer( committee_account, feeder2_id, core_asset(1000000) );
+
+      constexpr auto izzycoin_reward_percent = 100*GRAPHENE_1_PERCENT;
+      constexpr auto jillcoin_reward_percent = 100*GRAPHENE_1_PERCENT;
+
+      constexpr auto izzycoin_market_percent = 10*GRAPHENE_1_PERCENT;
+      constexpr auto jillcoin_market_percent = 20*GRAPHENE_1_PERCENT;
+
+      asset_id_type izzycoin_id = create_user_issued_asset( "IZZYCOIN", izzy, charge_market_fee,
+                                                            price( asset(1,asset_id_type(1)), core_asset(100) ),
+                                                            2, izzycoin_market_percent ).id;
+      asset_id_type jillcoin_id = create_bitasset( "JILLCOIN", jill_id, jillcoin_market_percent, charge_market_fee,
+                                                   2, izzycoin_id ).id; // JILLCOIN is backed by IZZYCOIN
+
+      generate_blocks_past_hf1268();
+
+      auto start_time = db.head_block_time();
+      auto jill_feed_life = jillcoin_id(db).bitasset_data(db).options.feed_lifetime_sec;
+
+      update_asset(izzy_id, izzy_private_key, izzycoin_id, izzycoin_reward_percent);
+      update_asset(jill_id, jill_private_key, jillcoin_id, jillcoin_reward_percent);
+
+      const share_type izzy_prec = asset::scaled_precision( asset_id_type(izzycoin_id)(db).precision );
+      const share_type jill_prec = asset::scaled_precision( asset_id_type(jillcoin_id)(db).precision );
+
+      auto _izzy = [&]( int64_t x ) -> asset
+      {   return asset( x*izzy_prec, izzycoin_id );   };
+      auto _jill = [&]( int64_t x ) -> asset
+      {   return asset( x*jill_prec, jillcoin_id );   };
+
+      update_feed_producers( jillcoin_id(db), { jill_id, feeder1_id, feeder2_id } );
+
+      // Jillcoin is worth 30 Izzycoin
+      price_feed feed;
+      feed.core_exchange_rate = price( _jill(1), core_asset(3000) );
+      feed.settlement_price = price( _jill(1), _izzy(30) );
+      feed.maintenance_collateral_ratio = 175 * GRAPHENE_COLLATERAL_RATIO_DENOM / 100;
+      feed.maximum_short_squeeze_ratio = 150 * GRAPHENE_COLLATERAL_RATIO_DENOM / 100;
+      publish_feed( jillcoin_id(db), feeder1_id(db), feed );
+      publish_feed( jillcoin_id(db), feeder2_id(db), feed );
+
+      // Alice create some coins and transfer to Bob
+      issue_uia( alice, _izzy( 20000 ) );
+      borrow( alice_id, _jill(200), _izzy(18000) );
+      transfer( alice_id, bob_id, _jill(200) );
+
+      // Bob place an order
+      create_sell_order( bob_id, _jill(200), _izzy(10000) );
+
+      generate_block();
+
+      generate_blocks( start_time + jill_feed_life * 2 / 3 );
+      set_expiration( db, trx );
+
+      // Jillcoin is now worth 60 Izzycoin, Jill published a new feed, feeder1 and feeder2 didn't update feed
+      feed.settlement_price = price( _jill(1), _izzy(60) );
+      publish_feed( jillcoin_id(db), jill_id(db), feed );
+
+      generate_block();
+
+      // feeder1 and feeder2's feed expire, Jill's feed become effective
+      generate_blocks( start_time + jill_feed_life * 4 / 3 );
+
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE(asset_claim_reward_test)
 {
    try
