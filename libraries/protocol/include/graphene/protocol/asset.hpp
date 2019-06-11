@@ -153,19 +153,19 @@ namespace graphene { namespace protocol {
    private:
       typedef boost::multiprecision::uint128_t uint128_t;
 
-      price( const asset& _base, const asset& _quote, uint128_t _bdq, uint128_t _qdb )
+/*      price( const asset& _base, const asset& _quote, uint128_t _bdq, uint128_t _qdb )
       : base(_base),
         quote(_quote),
         base_amount_cache(_base.amount.value),
         quote_amount_cache(_quote.amount.value),
         bdq(_bdq),
         qdb(_qdb)
-      {}
+      {}*/
 
       mutable int64_t base_amount_cache = 0; ///< cached value of base.amount
       mutable int64_t quote_amount_cache = 0; ///< cached value of quote.amount
       mutable uint128_t bdq = 0; ///< (base_amount << 64) / quote.amount
-      mutable uint128_t qdb = 0; ///< (quote_amount << 64) / base.amount
+      //mutable uint128_t qdb = 0; ///< (quote_amount << 64) / base.amount
 
       void prepare_for_comparison() const; ///< Recalculates bdq and qdb if needed
 

@@ -43,7 +43,7 @@ namespace graphene { namespace protocol {
          base_amount_cache = base.amount.value;
          quote_amount_cache = quote.amount.value;
          bdq = (uint128_t(base.amount.value) << 64) / quote.amount.value;
-         qdb = (uint128_t(quote.amount.value) << 64) / base.amount.value;
+         //qdb = (uint128_t(quote.amount.value) << 64) / base.amount.value;
       }
 
       bool operator == ( const price& a, const price& b )
@@ -78,8 +78,10 @@ namespace graphene { namespace protocol {
             a.prepare_for_comparison();
             b.prepare_for_comparison();
 
-            if( a.bdq < b.bdq || a.qdb > b.qdb ) return true;
-            if( a.bdq > b.bdq || a.qdb < b.qdb ) return false;
+            //if( a.bdq < b.bdq || a.qdb > b.qdb ) return true;
+            //if( a.bdq > b.bdq || a.qdb < b.qdb ) return false;
+            if( a.bdq < b.bdq ) return true;
+            if( a.bdq > b.bdq ) return false;
          }
 
          const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
@@ -90,9 +92,9 @@ namespace graphene { namespace protocol {
 
       price operator ~ ( const price& p )
       {
-         if( p.base.amount.value == p.base_amount_cache && p.quote.amount.value == p.quote_amount_cache )
-            return price( p.quote, p.base, p.qdb, p.bdq );
-         else
+         //if( p.base.amount.value == p.base_amount_cache && p.quote.amount.value == p.quote_amount_cache )
+         //   return price( p.quote, p.base, p.qdb, p.bdq );
+         //else
             return price( p.quote, p.base );
       }
 
