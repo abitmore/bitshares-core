@@ -116,8 +116,14 @@ namespace graphene { namespace protocol {
    class price
    {
    public:
-      explicit price(const asset& _base = asset(), const asset& _quote = asset())
-         : base(_base),quote(_quote){}
+      explicit price( const asset& _base = asset(),
+                      const asset& _quote = asset(),
+                      bool _prepare_for_comparison = false )
+         : base(_base), quote(_quote)
+      {
+         if( _prepare_for_comparison )
+            prepare_for_comparison();
+      }
 
       price(const price&) = default;
 
@@ -142,8 +148,19 @@ namespace graphene { namespace protocol {
 
       friend bool  operator <  ( const price& a, const price& b );
 
+      friend price operator ~  ( const price& p );
+
    private:
       typedef boost::multiprecision::uint128_t uint128_t;
+
+      price( const asset& _base, const asset& _quote, uint128_t _bdq, uint128_t _qdb )
+      : base(_base),
+        quote(_quote),
+        base_amount_cache(_base.amount.value),
+        quote_amount_cache(_quote.amount.value),
+        bdq(_bdq),
+        qdb(_qdb)
+      {}
 
       mutable int64_t base_amount_cache = 0; ///< cached value of base.amount
       mutable int64_t quote_amount_cache = 0; ///< cached value of quote.amount
@@ -155,7 +172,6 @@ namespace graphene { namespace protocol {
    };
 
    price operator / ( const asset& base, const asset& quote );
-   inline price operator~( const price& p ) { return price(p.quote,p.base); }
 
    bool  operator == ( const price& a, const price& b );
 

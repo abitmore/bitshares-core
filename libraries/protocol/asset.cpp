@@ -88,6 +88,14 @@ namespace graphene { namespace protocol {
          return amult < bmult;
       }
 
+      price operator ~ ( const price& p )
+      {
+         if( p.base.amount.value == p.base_amount_cache && p.quote.amount.value == p.quote_amount_cache )
+            return price( p.quote, p.base, p.qdb, p.bdq );
+         else
+            return price( p.quote, p.base );
+      }
+
       asset operator * ( const asset& a, const price& b )
       {
          if( a.asset_id == b.base.asset_id )
@@ -133,8 +141,27 @@ namespace graphene { namespace protocol {
          return price(base,quote);
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
-      price price::max( asset_id_type base, asset_id_type quote ) { return asset( share_type(GRAPHENE_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
-      price price::min( asset_id_type base, asset_id_type quote ) { return asset( 1, base ) / asset( GRAPHENE_MAX_SHARE_SUPPLY, quote); }
+      price price::max( asset_id_type base, asset_id_type quote )
+      {
+         const static price p = price( asset( share_type(GRAPHENE_MAX_SHARE_SUPPLY), asset_id_type() ),
+                                       asset( share_type(1), asset_id_type() ),
+                                       true );
+         price m = p;
+         m.base.asset_id = base;
+         m.quote.asset_id = quote;
+         return m;
+      }
+
+      price price::min( asset_id_type base, asset_id_type quote )
+      {
+         const static price p = price( asset( share_type(1), asset_id_type() ),
+                                       asset( share_type(GRAPHENE_MAX_SHARE_SUPPLY), asset_id_type() ),
+                                       true );
+         price m = p;
+         m.base.asset_id = base;
+         m.quote.asset_id = quote;
+         return m;
+      }
 
       price operator *  ( const price& p, const ratio_type& r )
       { try {
