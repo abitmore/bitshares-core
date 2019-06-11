@@ -31,11 +31,29 @@ namespace graphene { namespace protocol {
       typedef boost::multiprecision::uint128_t uint128_t;
       typedef boost::multiprecision::int128_t  int128_t;
 
+      void price::prepare_for_comparison() const
+      {
+         if( base.amount.value == base_amount_cache && quote.amount.value == quote_amount_cache )
+            return;
+
+         FC_ASSERT( base.amount.value > 0 && quote.amount.value > 0,
+                    "Internal error, non-positive values detected in price::prepare_for_comparison(): ${p}",
+                    ("p", *this) );
+
+         base_amount_cache = base.amount.value;
+         quote_amount_cache = quote.amount.value;
+         bdq = (uint128_t(base.amount.value) << 64) / quote.amount.value;
+         qdb = (uint128_t(quote.amount.value) << 64) / base.amount.value;
+      }
+
       bool operator == ( const price& a, const price& b )
       {
          if( std::tie( a.base.asset_id, a.quote.asset_id ) != std::tie( b.base.asset_id, b.quote.asset_id ) )
             return false;
 
+         // Note:
+         //   If quote amount is negative, uint128_t(quote.amount) below will be large, then the `*` may overflow.
+         //   It seems the original code assumes that quote amount won't be negative (TODO verify it).
          const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
          const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
 
@@ -48,6 +66,21 @@ namespace graphene { namespace protocol {
          if( a.base.asset_id > b.base.asset_id ) return false;
          if( a.quote.asset_id < b.quote.asset_id ) return true;
          if( a.quote.asset_id > b.quote.asset_id ) return false;
+
+         // Note:
+         //   If quote amount is negative, uint128_t(quote.amount) below will be large, then the `*` may overflow.
+         //   It seems the original code assumes that quote amount won't be negative (TODO verify it).
+         //
+         //   Adding `FC_ASSERT(amount >= 0)` here may possibly cause unexpected chain halt.
+         //   To avoid potential trouble, only call `prepare_for_comparison()` when all amounts are positive.
+         if( a.base.amount > 0 && a.quote.amount > 0 && b.base.amount > 0 && b.quote.amount > 0 )
+         {
+            a.prepare_for_comparison();
+            b.prepare_for_comparison();
+
+            if( a.bdq < b.bdq || a.qdb > b.qdb ) return true;
+            if( a.bdq > b.bdq || a.qdb < b.qdb ) return false;
+         }
 
          const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
          const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
@@ -97,7 +130,7 @@ namespace graphene { namespace protocol {
       price operator / ( const asset& base, const asset& quote )
       { try {
          FC_ASSERT( base.asset_id != quote.asset_id );
-         return price{base,quote};
+         return price(base,quote);
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
       price price::max( asset_id_type base, asset_id_type quote ) { return asset( share_type(GRAPHENE_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }

@@ -24,11 +24,13 @@
 #pragma once
 #include <graphene/protocol/types.hpp>
 
+#include <boost/multiprecision/cpp_int.hpp>
+
 namespace graphene { namespace protocol {
 
    extern const int64_t scaled_precision_lut[];
 
-   struct price;
+   class price;
 
    struct asset
    {
@@ -111,10 +113,13 @@ namespace graphene { namespace protocol {
     * represented as base/quote, so in the example price above the seller is looking to sell CORE asset and get USD in
     * return.
     */
-   struct price
+   class price
    {
+   public:
       explicit price(const asset& _base = asset(), const asset& _quote = asset())
          : base(_base),quote(_quote){}
+
+      price(const price&) = default;
 
       asset base;
       asset quote;
@@ -134,12 +139,24 @@ namespace graphene { namespace protocol {
 
       bool is_null()const;
       void validate()const;
+
+      friend bool  operator <  ( const price& a, const price& b );
+
+   private:
+      typedef boost::multiprecision::uint128_t uint128_t;
+
+      mutable int64_t base_amount_cache = 0; ///< cached value of base.amount
+      mutable int64_t quote_amount_cache = 0; ///< cached value of quote.amount
+      mutable uint128_t bdq = 0; ///< (base_amount << 64) / quote.amount
+      mutable uint128_t qdb = 0; ///< (quote_amount << 64) / base.amount
+
+      void prepare_for_comparison() const; ///< Recalculates bdq and qdb if needed
+
    };
 
    price operator / ( const asset& base, const asset& quote );
-   inline price operator~( const price& p ) { return price{p.quote,p.base}; }
+   inline price operator~( const price& p ) { return price(p.quote,p.base); }
 
-   bool  operator <  ( const price& a, const price& b );
    bool  operator == ( const price& a, const price& b );
 
    inline bool  operator >  ( const price& a, const price& b ) { return (b < a); }
