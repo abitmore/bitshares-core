@@ -194,7 +194,10 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
             return;
 
          if( !is_subscribed_to_item(i) )
+         {
+            ilog("subscribing to ${i}", ("i",i));
             _subscribe_filter.insert( vec.data(), vec.size() );
+         }
       }
 
       template<typename T>
@@ -203,7 +206,10 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
          if( !_subscribe_callback )
             return false;
 
-         return _subscribe_filter.contains( i );
+         auto vec = fc::raw::pack(i);
+         bool b = _subscribe_filter.contains( vec.data(), vec.size() );
+         ilog( "checking whether subscribed to ${i}, returns ${b}", ("i",i)("b",b) );
+         return b;
       }
 
       bool is_impacted_account( const flat_set<account_id_type>& accounts)
@@ -2684,6 +2690,7 @@ void database_api_impl::handle_object_changed(bool force_notify, bool full_objec
 {
    if( _subscribe_callback )
    {
+      idump((ids));
       vector<variant> updates;
 
       for(auto id : ids)
