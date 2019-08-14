@@ -53,7 +53,8 @@ enum market_history_object_type
    bucket_object_type = 1,
    market_ticker_object_type = 2,
    market_ticker_meta_object_type = 3,
-   asset_trading_stats_object_type = 4
+   asset_ticker_object_type = 4,
+   asset_bucket_object_type = 5
 };
 
 struct bucket_key
@@ -159,6 +160,26 @@ struct market_ticker_meta_object : public abstract_object<market_ticker_meta_obj
    bool                skip_min_order_his_id = false;
 };
 
+struct asset_ticker_object : public abstract_object<asset_ticker_object>
+{
+   static const uint8_t space_id = MARKET_HISTORY_SPACE_ID;
+   static const uint8_t type_id  = asset_ticker_object_type;
+
+   asset_id_type       asset_id;
+   fc::uint128_t       volume;
+};
+
+struct asset_bucket_object : public abstract_object<asset_bucket_object>
+{
+   static const uint8_t space_id = MARKET_HISTORY_SPACE_ID;
+   static const uint8_t type_id  = asset_bucket_object_type;
+
+   asset_id_type       asset_id;
+   uint32_t            seconds = 0;
+   fc::time_point_sec  open;
+   fc::uint128_t       volume;
+};
+
 struct by_key;
 typedef multi_index_container<
    bucket_object,
@@ -224,9 +245,35 @@ typedef multi_index_container<
    >
 > market_ticker_object_multi_index_type;
 
+struct by_asset;
+typedef multi_index_container<
+   asset_ticker_object,
+   indexed_by<
+      ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag<by_asset>, member< asset_ticker_object, asset_id_type, &asset_ticker_object::asset_id > >
+   >
+> asset_ticker_object_multi_index_type;
+
+struct by_asset_bucket;
+typedef multi_index_container<
+   asset_bucket_object,
+   indexed_by<
+      ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag<by_asset_bucket>,
+         composite_key< asset_bucket_object,
+            member< asset_bucket_object, asset_id_type, &asset_bucket_object::asset_id >,
+            member< asset_bucket_object, uint32_t, &asset_bucket_object::seconds >,
+            member< asset_bucket_object, fc::time_point_sec, &asset_bucket_object::open >
+         >
+      >
+   >
+> asset_bucket_object_multi_index_type;
+
 typedef generic_index<bucket_object, bucket_object_multi_index_type> bucket_index;
 typedef generic_index<order_history_object, order_history_multi_index_type> history_index;
 typedef generic_index<market_ticker_object, market_ticker_object_multi_index_type> market_ticker_index;
+typedef generic_index<asset_ticker_object, asset_ticker_object_multi_index_type> asset_ticker_index;
+typedef generic_index<asset_bucket_object, asset_bucket_object_multi_index_type> asset_bucket_index;
 
 
 namespace detail
@@ -282,3 +329,7 @@ FC_REFLECT_DERIVED( graphene::market_history::market_ticker_object, (graphene::d
                     (base_volume)(quote_volume) )
 FC_REFLECT_DERIVED( graphene::market_history::market_ticker_meta_object, (graphene::db::object),
                     (rolling_min_order_his_id)(skip_min_order_his_id) )
+FC_REFLECT_DERIVED( graphene::market_history::asset_ticker_object, (graphene::db::object),
+                    (asset_id)(volume) )
+FC_REFLECT_DERIVED( graphene::market_history::asset_bucket_object, (graphene::db::object),
+                    (asset_id)(seconds)(open)(volume) )

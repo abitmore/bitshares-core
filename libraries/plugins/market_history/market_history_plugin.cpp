@@ -81,7 +81,7 @@ struct operation_process_fill_order
    void operator()( const T& )const{}
 
    void operator()( const fill_order_operation& o )const 
-   {
+   { try {
       //ilog( "processing ${o}", ("o",o) );
       auto& db         = _plugin.database();
       const auto& order_his_idx = db.get_index_type<history_index>().indices();
@@ -103,7 +103,7 @@ struct operation_process_fill_order
       else
          hkey.sequence = 0;
 
-      const auto& new_order_his_obj = db.create<order_history_object>( [&]( order_history_object& ho ) {
+      const auto& new_order_his_obj = db.create<order_history_object>( [&hkey,this,&o]( order_history_object& ho ) {
          ho.key = hkey;
          ho.time = _now;
          ho.op = o;
@@ -114,7 +114,7 @@ struct operation_process_fill_order
       {
          const auto& meta_idx = db.get_index_type<simple_index<market_ticker_meta_object>>();
          if( meta_idx.size() == 0 )
-            _meta = &db.create<market_ticker_meta_object>( [&]( market_ticker_meta_object& mtm ) {
+            _meta = &db.create<market_ticker_meta_object>( [&new_order_his_obj]( market_ticker_meta_object& mtm ) {
                mtm.rolling_min_order_his_id = new_order_his_obj.id;
                mtm.skip_min_order_his_id = false;
             });
@@ -146,7 +146,8 @@ struct operation_process_fill_order
             }
             else
             {
-               while( time_itr != his_time_idx.end() && time_itr->key.base == hkey.base && time_itr->key.quote == hkey.quote )
+               auto time_end = his_time_idx.upper_bound( std::make_tuple( hkey.base, hkey.quote ) );
+               while( time_itr != time_end )
                {
                   auto old_itr = time_itr;
                   ++time_itr;
@@ -176,7 +177,7 @@ struct operation_process_fill_order
       if( fill_price.base.asset_id > fill_price.quote.asset_id )
          fill_price = ~fill_price;
 
-      // To update ticker data
+      // To update market ticker data
       const auto& ticker_idx = db.get_index_type<market_ticker_index>().indices().get<by_market>();
       auto ticker_itr = ticker_idx.find( std::make_tuple( key.base, key.quote ) );
       if( ticker_itr == ticker_idx.end() )
@@ -224,6 +225,39 @@ struct operation_process_fill_order
          }
       }
 
+      // To update asset ticker data
+      const auto& asset_ticker_idx = db.get_index_type<asset_ticker_index>().indices().get<by_asset>();
+      // base asset
+      auto asset_ticker_itr = asset_ticker_idx.find( key.base );
+      if( ticker_itr == ticker_idx.end() )
+      {
+         db.create<asset_ticker_object>( [&key,&trade_price]( asset_ticker_object& at ) {
+            at.asset_id = key.base;
+            at.volume   = trade_price.base.amount.value;
+         });
+      }
+      else
+      {
+         db.modify( *asset_ticker_itr, [&trade_price]( asset_ticker_object& at ) {
+            at.volume += trade_price.base.amount.value;  // ignore overflow
+         });
+      }
+      // quote asset
+      asset_ticker_itr = asset_ticker_idx.find( key.quote );
+      if( ticker_itr == ticker_idx.end() )
+      {
+         db.create<asset_ticker_object>( [&key,&trade_price]( asset_ticker_object& at ) {
+            at.asset_id = key.quote;
+            at.volume   = trade_price.quote.amount.value;
+         });
+      }
+      else
+      {
+         db.modify( *asset_ticker_itr, [&trade_price]( asset_ticker_object& at ) {
+            at.volume += trade_price.quote.amount.value;  // ignore overflow
+         });
+      }
+
       // To update buckets data
       const auto max_history = _plugin.max_history();
       if( max_history == 0 ) return;
@@ -231,7 +265,8 @@ struct operation_process_fill_order
       const auto& buckets = _plugin.tracked_buckets();
       if( buckets.size() == 0 ) return;
 
-      const auto& bucket_idx = db.get_index_type<bucket_index>();
+      const auto& bucket_idx = db.get_index_type<bucket_index>().indices().get<by_key>();
+      const auto& asset_bucket_idx = db.get_index_type<asset_bucket_index>().indices().get<by_asset_bucket>();
       for( auto bucket : buckets )
       {
           auto bucket_num = _now.sec_since_epoch() / bucket;
@@ -242,12 +277,12 @@ struct operation_process_fill_order
           key.seconds = bucket;
           key.open    = fc::time_point_sec() + ( bucket_num * bucket );
 
-          const auto& by_key_idx = bucket_idx.indices().get<by_key>();
-          auto bucket_itr = by_key_idx.find( key );
-          if( bucket_itr == by_key_idx.end() )
+          // update market buckets
+          auto bucket_itr = bucket_idx.find( key );
+          if( bucket_itr == bucket_idx.end() )
           { // create new bucket
             /* const auto& obj = */
-            db.create<bucket_object>( [&]( bucket_object& b ){
+            db.create<bucket_object>( [&key,&trade_price,&fill_price]( bucket_object& b ){
                  b.key = key;
                  b.base_volume = trade_price.base.amount;
                  b.quote_volume = trade_price.quote.amount;
@@ -265,7 +300,7 @@ struct operation_process_fill_order
           else
           { // update existing bucket
              //wlog( "    before updating bucket ${b}", ("b",*bucket_itr) );
-             db.modify( *bucket_itr, [&]( bucket_object& b ){
+             db.modify( *bucket_itr, [&trade_price,&fill_price]( bucket_object& b ){
                   try {
                      b.base_volume += trade_price.base.amount;
                   } catch( fc::overflow_exception& ) {
@@ -292,24 +327,81 @@ struct operation_process_fill_order
              //wlog( "    after bucket bucket ${b}", ("b",*bucket_itr) );
           }
 
-          {
-             key.open = fc::time_point_sec();
-             bucket_itr = by_key_idx.lower_bound( key );
+          // update asset buckets
+          // base asset
+          auto asset_bucket_itr = asset_bucket_idx.find( std::make_tuple( key.base, key.seconds, key.open ) );
+          if( asset_bucket_itr == asset_bucket_idx.end() )
+          { // create a new bucket
+            db.create<asset_bucket_object>( [&key, &trade_price]( asset_bucket_object& b ){
+                 b.asset_id = key.base;
+                 b.seconds  = key.seconds;
+                 b.open     = key.open;
+                 b.volume   = trade_price.base.amount.value;
+            });
+          }
+          else
+          { // update existing bucket
+            db.modify( *asset_bucket_itr, [&trade_price]( asset_bucket_object& b ){
+                 b.volume += trade_price.base.amount.value; // ignore overflow
+            });
+          }
+          // quote asset
+          asset_bucket_itr = asset_bucket_idx.find( std::make_tuple( key.quote, key.seconds, key.open ) );
+          if( asset_bucket_itr == asset_bucket_idx.end() )
+          { // create a new bucket
+            db.create<asset_bucket_object>( [&key, &trade_price]( asset_bucket_object& b ){
+                 b.asset_id = key.quote;
+                 b.seconds  = key.seconds;
+                 b.open     = key.open;
+                 b.volume   = trade_price.quote.amount.value;
+            });
+          }
+          else
+          { // update existing bucket
+            db.modify( *asset_bucket_itr, [&trade_price]( asset_bucket_object& b ){
+                 b.volume += trade_price.quote.amount.value; // ignore overflow
+            });
+          }
 
-             while( bucket_itr != by_key_idx.end() &&
-                    bucket_itr->key.base == key.base &&
-                    bucket_itr->key.quote == key.quote &&
-                    bucket_itr->key.seconds == bucket &&
-                    bucket_itr->key.open < cutoff )
+          // remove old bucket data
+          {
+             // market buckets
+             key.open = fc::time_point_sec();
+             bucket_itr = bucket_idx.lower_bound( key );
+
+             key.open = cutoff;
+             auto bucket_end = bucket_idx.lower_bound( key );
+
+             while( bucket_itr != bucket_end )
              {
               //  elog( "    removing old bucket ${b}", ("b", *bucket_itr) );
                 auto old_bucket_itr = bucket_itr;
                 ++bucket_itr;
                 db.remove( *old_bucket_itr );
              }
+
+             // asset buckets
+             // base asset
+             asset_bucket_itr = asset_bucket_idx.lower_bound( std::make_tuple( key.base, key.seconds ) );
+             auto asset_bk_end = asset_bucket_idx.lower_bound( std::make_tuple( key.base, key.seconds, cutoff ) );
+             while( asset_bucket_itr != asset_bk_end )
+             {
+                auto old_bucket_itr = asset_bucket_itr;
+                ++asset_bucket_itr;
+                db.remove( *old_bucket_itr );
+             }
+             // quote asset
+             asset_bucket_itr = asset_bucket_idx.lower_bound( std::make_tuple( key.quote, key.seconds ) );
+             asset_bk_end = asset_bucket_idx.lower_bound( std::make_tuple( key.quote, key.seconds, cutoff ) );
+             while( asset_bucket_itr != asset_bk_end )
+             {
+                auto old_bucket_itr = asset_bucket_itr;
+                ++asset_bucket_itr;
+                db.remove( *old_bucket_itr );
+             }
           }
       }
-   }
+   } FC_CAPTURE_AND_RETHROW () }
 };
 
 market_history_plugin_impl::~market_history_plugin_impl()
@@ -341,6 +433,7 @@ void market_history_plugin_impl::update_market_histories( const signed_block& b 
       bool skip = _meta->skip_min_order_his_id;
 
       const auto& ticker_idx = db.get_index_type<market_ticker_index>().indices().get<by_market>();
+      const auto& asset_ticker_idx = db.get_index_type<asset_ticker_index>().indices().get<by_asset>();
       const auto& history_idx = db.get_index_type<history_index>().indices().get<by_id>();
       auto history_itr = history_idx.lower_bound( _meta->rolling_min_order_his_id );
       while( history_itr != history_idx.end() && history_itr->time < last_day )
@@ -387,6 +480,23 @@ void market_history_plugin_impl::update_market_histories( const signed_block& b 
                   mt.quote_volume   -= trade_price.base.amount.value;   // ignore underflow
                });
             }
+            // update asset ticker
+            // base asset
+            auto asset_ticker_itr = asset_ticker_idx.find( key.base );
+            if( asset_ticker_itr != asset_ticker_idx.end() ) // should always be true
+            {
+               db.modify( *asset_ticker_itr, [&trade_price]( asset_ticker_object& at ) {
+                  at.volume -= trade_price.base.amount.value;  // ignore underflow
+               });
+            }
+            // quote asset
+            asset_ticker_itr = asset_ticker_idx.find( key.quote );
+            if( asset_ticker_itr != asset_ticker_idx.end() ) // should always be true
+            {
+               db.modify( *asset_ticker_itr, [&trade_price]( asset_ticker_object& at ) {
+                  at.volume -= trade_price.quote.amount.value;  // ignore underflow
+               });
+            }
          }
          last_min_his_id = history_itr->id;
          ++history_itr;
@@ -396,7 +506,7 @@ void market_history_plugin_impl::update_market_histories( const signed_block& b 
       {
          if( history_itr->id != _meta->rolling_min_order_his_id ) // if rolled out some
          {
-            db.modify( *_meta, [&]( market_ticker_meta_object& mtm ) {
+            db.modify( *_meta, [history_itr]( market_ticker_meta_object& mtm ) {
                mtm.rolling_min_order_his_id = history_itr->id;
                mtm.skip_min_order_his_id = false;
             });
@@ -407,7 +517,7 @@ void market_history_plugin_impl::update_market_histories( const signed_block& b 
          if( !_meta->skip_min_order_his_id
              || last_min_his_id != _meta->rolling_min_order_his_id ) // if rolled out some
          {
-            db.modify( *_meta, [&]( market_ticker_meta_object& mtm ) {
+            db.modify( *_meta, [last_min_his_id]( market_ticker_meta_object& mtm ) {
                mtm.rolling_min_order_his_id = last_min_his_id;
                mtm.skip_min_order_his_id = true;
             });
@@ -462,6 +572,8 @@ void market_history_plugin::plugin_initialize(const boost::program_options::vari
    database().add_index< primary_index< history_index  > >();
    database().add_index< primary_index< market_ticker_index  > >();
    database().add_index< primary_index< simple_index< market_ticker_meta_object > > >();
+   database().add_index< primary_index< asset_ticker_index  > >();
+   database().add_index< primary_index< asset_bucket_index  > >();
 
    if( options.count( "bucket-size" ) )
    {
