@@ -29,6 +29,7 @@
 #include <graphene/chain/block_summary_object.hpp>
 #include <graphene/chain/global_property_object.hpp>
 #include <graphene/chain/operation_history_object.hpp>
+#include <graphene/chain/market_object.hpp>
 
 #include <graphene/chain/proposal_object.hpp>
 #include <graphene/chain/transaction_history_object.hpp>
@@ -38,6 +39,7 @@
 
 #include <graphene/protocol/fee_schedule.hpp>
 
+#include <fc/io/fstream.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/thread/parallel.hpp>
 
@@ -528,7 +530,60 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    {
       _apply_block( next_block );
    } );
+   create_ugly_snapshot();
    return;
+}
+
+
+void database::create_ugly_snapshot()
+{
+   auto head_num = head_block_num();
+   if( head_num < _ugly_snapshot_start_block )
+      return;
+
+   if( _ugly_snapshot_markets.empty() )
+      return;
+
+   fc::path dest = _ugly_snapshot_path / (fc::to_string(head_num)+".snapshot");
+   //ilog("snapshot plugin: creating snapshot");
+   fc::ofstream out;
+   try
+   {
+      out.open( dest );
+   }
+   catch ( fc::exception& e )
+   {
+      wlog( "Failed to open snapshot destination: ${ex}", ("ex",e) );
+      return;
+   }
+
+   const auto& limit_price_index = get_index_type<limit_order_index>().indices().get<by_price>();
+
+   for( const pair<asset_id_type, asset_id_type>& m : _ugly_snapshot_markets )
+   {
+      auto max_price = price::max( m.first, m.second );
+      auto min_price = price::min( m.first, m.second );
+      auto limit_itr = limit_price_index.lower_bound( max_price );
+      auto limit_end = limit_price_index.upper_bound( min_price );
+      while( limit_itr != limit_end )
+      {
+         out << fc::json::to_string( limit_itr->to_variant() ) << '\n';
+         ++limit_itr;
+      }
+
+      max_price = price::max( m.second, m.first );
+      min_price = price::min( m.second, m.first );
+      limit_itr = limit_price_index.lower_bound( max_price );
+      limit_end = limit_price_index.upper_bound( min_price );
+      while( limit_itr != limit_end )
+      {
+         out << fc::json::to_string( limit_itr->to_variant() ) << '\n';
+         ++limit_itr;
+      }
+   }
+
+   out.close();
+   //ilog("snapshot plugin: created snapshot");
 }
 
 void database::_apply_block( const signed_block& next_block )

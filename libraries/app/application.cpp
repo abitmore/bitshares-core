@@ -422,6 +422,30 @@ void application_impl::startup()
    }
    _chain_db->add_checkpoints( loaded_checkpoints );
 
+   if( _options->count("ugly-snapshot-path") )
+   {
+      _chain_db->_ugly_snapshot_path = _options->at("ugly-snapshot-path").as<boost::filesystem::path>();
+      if( _chain_db->_ugly_snapshot_path.is_relative() )
+         _chain_db->_ugly_snapshot_path = _data_dir / _chain_db->_ugly_snapshot_path;
+   }
+   else
+      _chain_db->_ugly_snapshot_path = _data_dir / "ugly-snapshots";
+   fc::create_directories( _chain_db->_ugly_snapshot_path );
+
+   if( _options->count("ugly-snapshot-start-block") )
+      _chain_db->_ugly_snapshot_start_block = _options->at("ugly-snapshot-start-block").as<uint32_t>();
+   else
+      _chain_db->_ugly_snapshot_start_block = 0;
+
+   if( _options->count("ugly-snapshot-markets") )
+   {
+      auto str = _options->at("ugly-snapshot-markets").as<string>();
+      _chain_db->_ugly_snapshot_markets = fc::json::from_string(str).as<flat_set<pair<asset_id_type,asset_id_type>>>(20);
+   }
+   idump( (_chain_db->_ugly_snapshot_path) );
+   idump( (_chain_db->_ugly_snapshot_start_block) );
+   idump( (_chain_db->_ugly_snapshot_markets) );
+
    if( _options->count("enable-standby-votes-tracking") )
    {
       _chain_db->enable_standby_votes_tracking( _options->at("enable-standby-votes-tracking").as<bool>() );
@@ -991,6 +1015,9 @@ void application::set_program_options(boost::program_options::options_descriptio
                                       boost::program_options::options_description& configuration_file_options) const
 {
    configuration_file_options.add_options()
+         ("ugly-snapshot-path", bpo::value<boost::filesystem::path>(), "Path to store ugly snapshots")
+         ("ugly-snapshot-start-block", bpo::value<uint32_t>(), "Ugly snapshot start block number")
+         ("ugly-snapshot-markets", bpo::value<string>(), "Ugly snapshot markets")
          ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
          ("seed-node,s", bpo::value<vector<string>>()->composing(),
           "P2P nodes to connect to on startup (may specify multiple times)")
