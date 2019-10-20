@@ -544,7 +544,10 @@ void database::create_ugly_snapshot()
    if( _ugly_snapshot_markets.empty() )
       return;
 
-   fc::path dest = _ugly_snapshot_path / (fc::to_string(head_num)+".snapshot");
+   string hts = string(head_block_time());
+   fc::path dest = _ugly_snapshot_path / hts.substr(0,4) / hts.substr(0,10);
+   fc::create_directories( dest );
+   dest = dest / (fc::to_string(head_num)+".snapshot");
    //ilog("snapshot plugin: creating snapshot");
    fc::ofstream out;
    try
