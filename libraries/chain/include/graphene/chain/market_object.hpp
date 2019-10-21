@@ -68,6 +68,16 @@ class limit_order_object : public abstract_object<limit_order_object>
       asset_id_type receive_asset_id()const { return sell_price.quote.asset_id; }
 };
 
+struct ugly_limit_order_object
+{
+      ugly_limit_order_object( const limit_order_object& o )
+      : seller(o.seller), for_sale(o.for_sale), sell_price(o.sell_price) {}
+
+      account_id_type  seller;
+      share_type       for_sale; ///< asset id is sell_price.base.asset_id
+      price            sell_price;
+};
+
 struct by_id;
 struct by_price;
 struct by_expiration;
@@ -276,6 +286,8 @@ FC_REFLECT_DERIVED( graphene::chain::limit_order_object,
                     (graphene::db::object),
                     (expiration)(seller)(for_sale)(sell_price)(deferred_fee)(deferred_paid_fee)
                   )
+
+FC_REFLECT( graphene::chain::ugly_limit_order_object, (seller)(for_sale)(sell_price) )
 
 FC_REFLECT_DERIVED( graphene::chain::call_order_object, (graphene::db::object),
                     (borrower)(collateral)(debt)(call_price)(target_collateral_ratio) )

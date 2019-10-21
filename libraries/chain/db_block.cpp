@@ -560,16 +560,22 @@ void database::create_ugly_snapshot()
    }
 
    const auto& limit_price_index = get_index_type<limit_order_index>().indices().get<by_price>();
-
    for( const pair<asset_id_type, asset_id_type>& m : _ugly_snapshot_markets )
    {
       auto max_price = price::max( m.first, m.second );
       auto min_price = price::min( m.first, m.second );
       auto limit_itr = limit_price_index.lower_bound( max_price );
       auto limit_end = limit_price_index.upper_bound( min_price );
+      bool b = false;
       while( limit_itr != limit_end )
       {
-         out << fc::json::to_string( limit_itr->to_variant() ) << '\n';
+         const limit_order_object& o = *limit_itr;
+         if( !b )
+         {
+            limit_end = limit_price_index.upper_bound( o.sell_price * ratio_type(9,10) );
+            b = true;
+         }
+         out << fc::json::to_string( ugly_limit_order_object(o) ) << '\n';
          ++limit_itr;
       }
 
@@ -577,9 +583,16 @@ void database::create_ugly_snapshot()
       min_price = price::min( m.second, m.first );
       limit_itr = limit_price_index.lower_bound( max_price );
       limit_end = limit_price_index.upper_bound( min_price );
+      b = false;
       while( limit_itr != limit_end )
       {
-         out << fc::json::to_string( limit_itr->to_variant() ) << '\n';
+         const limit_order_object& o = *limit_itr;
+         if( !b )
+         {
+            limit_end = limit_price_index.upper_bound( o.sell_price * ratio_type(9,10) );
+            b = true;
+         }
+         out << fc::json::to_string( ugly_limit_order_object(o) ) << '\n';
          ++limit_itr;
       }
    }
