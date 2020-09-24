@@ -20,11 +20,19 @@ else
   "$1" --list_content 2>&1 \
     | grep '\*$' \
     | sed 's=\*$==;s=^    =/=' \
-    | while read t; do
-	case "$t" in
-	/*) echo "$pre$t"; ;;
-	*) echo "$t"; ;;
-	esac
-      done \
+    | (while read t; do
+        case "$t" in
+        /*) echo "$pre$t"; found=1; ;;
+        *) if [ -n "$pre" -a "$found" = "0" ]; then
+              echo "$pre"
+           fi
+           pre="$t"
+           found=0
+           ;;
+        esac
+      done
+      if [ -n "$pre" -a "$found" = "0" ]; then
+        echo "$pre"
+      fi) \
     | parallel echo Running {}\; "$@" -t {}
 fi
