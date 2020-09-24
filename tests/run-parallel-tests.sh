@@ -17,6 +17,11 @@ if [ "$BOOST_VERSION" = "" -o "$BOOST_VERSION" -lt 105900 ]; then
     echo "Boost version '$BOOST_VERSION' - executing tests serially"
     "$@"
 else
+  echo "list_content test begin"
+  "$1" --list_content 2>&1 \
+    | grep '\*$' \
+    | sed 's=\*$==;s=^    =/=' 
+  echo "list_content test end"
   "$1" --list_content 2>&1 \
     | grep '\*$' \
     | sed 's=\*$==;s=^    =/=' \
