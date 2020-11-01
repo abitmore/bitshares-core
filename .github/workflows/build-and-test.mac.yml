@@ -14,6 +14,7 @@ jobs:
         brew install ccache
         brew search boost
         brew install bitshares/boost160/boost@1.60
+        find / -name bootstrap.log -exec cat { } \;
     - uses: actions/checkout@v2
       with:
         submodules: recursive
