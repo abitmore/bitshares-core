@@ -13,7 +13,7 @@ jobs:
         brew install autoconf automake libtool
         brew install ccache
         brew search boost
-        brew install bitshares/boost160/boost@1.60 || (find /Users/runner/ -name bootstrap.log -exec cat {} \; && false)
+        brew install bitshares/boost160/boost@1.60 || (find . /Users/runner /usr/local/Cellar -name *bootstrap.log* -exec cat {} \; && false)
     - uses: actions/checkout@v2
       with:
         submodules: recursive
