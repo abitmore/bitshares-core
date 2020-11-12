@@ -1907,33 +1907,52 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
             optional<bool> subscribe,
             optional<bool> with_statistics )const
 {
+   ilog("g1");
    FC_ASSERT( _app_options, "Internal error" );
+   ilog("g2");
    const auto configured_limit = _app_options->api_limit_get_liquidity_pools;
+   ilog("g3");
    FC_ASSERT( ids.size() <= configured_limit,
               "size of the querying list can not be greater than ${configured_limit}",
               ("configured_limit", configured_limit) );
+   ilog("g4");
 
    bool with_stats = ( with_statistics.valid() && *with_statistics );
+   ilog("g5");
 
    bool to_subscribe = get_whether_to_subscribe( subscribe );
+   ilog("g6");
    vector<optional<extended_liquidity_pool_object>> result; result.reserve(ids.size());
+   ilog("g7");
    std::transform(ids.begin(), ids.end(), std::back_inserter(result),
                   [this,to_subscribe,with_stats](liquidity_pool_id_type id)
                      -> optional<extended_liquidity_pool_object> {
 
+   ilog("g8");
       if(auto o = _db.find(id))
       {
+   ilog("g9");
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
+   ilog("g10");
          if( to_subscribe )
          {
+   ilog("g11");
             subscribe_to_item( id );
+   ilog("g12");
             if( ext_obj.statistics.valid() )
+            {
+   ilog("g13");
                subscribe_to_item( ext_obj.statistics->id );
+   ilog("g14");
+            }
          }
+   ilog("g15");
          return ext_obj;
       }
+   ilog("g16");
       return {};
    });
+   ilog("g17");
    return result;
 }
 
