@@ -288,7 +288,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       ////////////////////////////////////////////////
 
       template<class LP>
-      extended_liquidity_pool_object extend_liquidity_pool( LP&& a, bool with_stats )const
+      extended_liquidity_pool_object extend_liquidity_pool( const LP& a, bool with_stats )const
       {
          liquidity_pool_id_type id = a.id;
          extended_liquidity_pool_object result = extended_liquidity_pool_object( std::forward<LP>( a ) );
