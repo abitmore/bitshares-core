@@ -288,17 +288,26 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       ////////////////////////////////////////////////
 
       template<class LP>
-      extended_liquidity_pool_object extend_liquidity_pool( const LP& a, bool with_stats )const
+      extended_liquidity_pool_object extend_liquidity_pool( LP&& a, bool with_stats )const
       {
          liquidity_pool_id_type id = a.id;
+   ilog("L1");
          extended_liquidity_pool_object result = extended_liquidity_pool_object( std::forward<LP>( a ) );
+   ilog("L2");
          if( with_stats && _app_options && _app_options->has_market_history_plugin )
          {
+   ilog("L2.1");
             liquidity_pool_ticker_id_type ticker_id( id.instance );
             const liquidity_pool_ticker_object* ticker = _db.find<liquidity_pool_ticker_object>( ticker_id );
+   ilog("L2.2");
             if( ticker )
+            {
+   ilog("L2.3");
                result.statistics = *ticker;
+            }
+   ilog("L2.4");
          }
+   ilog("L3");
          return result;
       }
 

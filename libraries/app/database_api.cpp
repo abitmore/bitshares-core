@@ -1933,10 +1933,10 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
       {
    ilog("g9");
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
-   //ilog("g10");
+   ilog("g10");
          if( to_subscribe )
          {
-   //ilog("g11");
+   ilog("g11");
             subscribe_to_item( id );
    //ilog("g12");
             if( ext_obj.statistics.valid() )
@@ -1946,7 +1946,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
    //ilog("g14");
             }
          }
-   //ilog("g15");
+   ilog("g15");
          return ext_obj;
       }
    ilog("g16");
