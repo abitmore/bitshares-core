@@ -925,7 +925,8 @@ BOOST_AUTO_TEST_CASE( liquidity_pool_exchange_test )
       BOOST_CHECK_EQUAL( ticker.total_exchange_b2a_count, 1u );
 
       // Check database API
-      idump( ( app.get_options() == nullptr) );
+      //bool options_is_null = (app.get_options() == nullptr);
+      //idump( (options_is_null) );
 
       ilog("p0");
       graphene::app::database_api db_api( db, &( app.get_options() ) );
