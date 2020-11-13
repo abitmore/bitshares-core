@@ -147,7 +147,6 @@ namespace graphene { namespace app {
    {
       extended_asset_object() {}
       explicit extended_asset_object( const asset_object& a ) : asset_object( a ) {}
-      explicit extended_asset_object( asset_object&& a ) : asset_object( std::move(a) ) {}
 
       optional<share_type> total_in_collateral;
       optional<share_type> total_backing_collateral;
@@ -157,7 +156,6 @@ namespace graphene { namespace app {
    {
       extended_liquidity_pool_object() {}
       explicit extended_liquidity_pool_object( const liquidity_pool_object& o ) : liquidity_pool_object( o ) {}
-      explicit extended_liquidity_pool_object( liquidity_pool_object&& o ) : liquidity_pool_object( std::move(o) ) {}
 
       optional<liquidity_pool_ticker_object> statistics;
    };
