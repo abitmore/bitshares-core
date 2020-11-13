@@ -1917,11 +1917,10 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
 
    bool to_subscribe = get_whether_to_subscribe( subscribe );
    vector<optional<extended_liquidity_pool_object>> result; result.reserve(ids.size());
-   std::transform(ids.begin(), ids.end(), std::back_inserter(result),
-                  [this,to_subscribe,with_stats](liquidity_pool_id_type id)
-                     -> optional<extended_liquidity_pool_object> {
 
-      if(auto o = _db.find(id))
+   for( auto id : ids )
+   {
+      if( auto o = _db.find(id) )
       {
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
          if( to_subscribe )
@@ -1930,10 +1929,13 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
             if( ext_obj.statistics.valid() )
                subscribe_to_item( ext_obj.statistics->id );
          }
-         return ext_obj;
+         optional<extended_liquidity_pool_object> oelp = ext_obj;
+         result.push_back( oelp );
       }
-      return {};
-   });
+      else
+         result.push_back( optional<extended_liquidity_pool_object>() );
+   }
+
    return result;
 }
 
