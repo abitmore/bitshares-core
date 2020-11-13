@@ -1923,13 +1923,15 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
    bool to_subscribe = get_whether_to_subscribe( subscribe );
    //ilog("g6");
    vector<optional<extended_liquidity_pool_object>> result; result.reserve(ids.size());
-   ilog("g7");
-   std::transform(ids.begin(), ids.end(), std::back_inserter(result),
-                  [this,to_subscribe,with_stats](liquidity_pool_id_type id)
-                     -> optional<extended_liquidity_pool_object> {
 
+   ilog("g7");
+   for( auto id : ids )
+   {
    //ilog("g8");
-      if(auto o = _db.find(id))
+      auto o = _db.find(id);
+      if( o == nullptr )
+         result.push_back( optional<extended_liquidity_pool_object>() );
+      else
       {
    ilog("g9");
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
@@ -1947,11 +1949,15 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
             }
          }
    ilog("g15");
-         return ext_obj;
+         result.push_back( ext_obj );
       }
    ilog("g16");
-      return {};
-   });
+   }
+//   std::transform(ids.begin(), ids.end(), std::back_inserter(result),
+//                  [this,to_subscribe,with_stats](liquidity_pool_id_type id)
+//                     -> optional<extended_liquidity_pool_object> {
+//   });
+
    ilog("g17");
    return result;
 }
