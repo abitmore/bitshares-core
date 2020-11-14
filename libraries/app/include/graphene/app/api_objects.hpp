@@ -153,8 +153,9 @@ namespace graphene { namespace app {
       optional<share_type> total_backing_collateral;
    };
 
-   struct extended_liquidity_pool_object : liquidity_pool_object
+   class extended_liquidity_pool_object : public liquidity_pool_object
    {
+   public:
       extended_liquidity_pool_object() {}
       explicit extended_liquidity_pool_object( const liquidity_pool_object& o ) : liquidity_pool_object( o ) {}
 
