@@ -1918,24 +1918,39 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
    bool to_subscribe = get_whether_to_subscribe( subscribe );
    vector<optional<extended_liquidity_pool_object>> result; result.reserve(ids.size());
 
+   ilog( "a" );
    for( auto id : ids )
    {
+      idump( (id) );
       auto o = _db.find(id);
+      ilog( "a1" );
       if( o != nullptr )
       {
+         ilog( "a2" );
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
+         ilog( "a3" );
          if( to_subscribe )
          {
+            ilog( "a4" );
             subscribe_to_item( id );
             if( ext_obj.statistics.valid() )
                subscribe_to_item( ext_obj.statistics->id );
          }
+         ilog( "a5" );
          optional<extended_liquidity_pool_object> oelp = ext_obj;
+         ilog( "a6" );
          result.push_back( oelp );
+         ilog( "a7" );
       }
       else
+      {
+         ilog( "a8" );
          result.push_back( optional<extended_liquidity_pool_object>() );
+         ilog( "a9" );
+      }
+      ilog( "a10" );
    }
+   ilog( "b" );
 
    return result;
 }
