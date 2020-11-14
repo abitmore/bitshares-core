@@ -1920,7 +1920,8 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
 
    for( auto id : ids )
    {
-      if( auto o = _db.find(id) )
+      auto o = _db.find(id);
+      if( o != nullptr )
       {
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
          if( to_subscribe )
