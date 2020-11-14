@@ -157,7 +157,6 @@ namespace graphene { namespace app {
    {
       extended_liquidity_pool_object() {}
       explicit extended_liquidity_pool_object( const liquidity_pool_object& o ) : liquidity_pool_object( o ) {}
-      explicit extended_liquidity_pool_object( liquidity_pool_object&& o ) : liquidity_pool_object( std::move(o) ) {}
 
       optional<liquidity_pool_ticker_object> statistics;
    };
