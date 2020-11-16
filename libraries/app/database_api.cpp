@@ -1932,7 +1932,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
       {
    //ilog("g9");
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
-   //ilog("g10");
+   ilog("g10");
          if( to_subscribe )
          {
    //ilog("g11");
@@ -1951,7 +1951,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
       }
       else
          result.push_back( optional<extended_liquidity_pool_object>() );
-   //ilog("g16");
+   ilog("g16");
    }
 //   std::transform(ids.begin(), ids.end(), std::back_inserter(result),
 //                  [this,to_subscribe,with_stats](liquidity_pool_id_type id)
