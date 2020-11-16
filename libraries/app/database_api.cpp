@@ -1928,10 +1928,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
    for( auto id : ids )
    {
    //ilog("g8");
-      auto o = _db.find(id);
-      if( o == nullptr )
-         result.push_back( optional<extended_liquidity_pool_object>() );
-      else
+      if( auto o = _db.find(id) )
       {
    ilog("g9");
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
@@ -1952,6 +1949,8 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
          optional<extended_liquidity_pool_object> oelp = ext_obj;
          result.push_back( oelp );
       }
+      else
+         result.push_back( optional<extended_liquidity_pool_object>() );
    ilog("g16");
    }
 //   std::transform(ids.begin(), ids.end(), std::back_inserter(result),
