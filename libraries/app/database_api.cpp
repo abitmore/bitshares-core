@@ -1930,7 +1930,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
    //ilog("g8");
       if( auto o = _db.find(id) )
       {
-   //ilog("g9");
+   ilog("g9");
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
    ilog("g10");
          if( to_subscribe )
@@ -1947,6 +1947,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
          }
    ilog("g15");
          optional<extended_liquidity_pool_object> oelp = ext_obj;
+   ilog("g15.1");
          result.push_back( oelp );
       }
       else
