@@ -1924,7 +1924,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
    //ilog("g6");
    vector<optional<extended_liquidity_pool_object>> result; result.reserve(ids.size());
 
-   //ilog("g7");
+   ilog("g7");
    for( auto id : ids )
    {
    //ilog("g8");
