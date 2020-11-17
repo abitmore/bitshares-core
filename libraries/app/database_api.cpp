@@ -1958,7 +1958,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
 //                     -> optional<extended_liquidity_pool_object> {
 //   });
 
-   //ilog("g17");
+   ilog("g17");
    return result;
 }
 
