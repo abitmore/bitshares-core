@@ -1907,7 +1907,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
             optional<bool> subscribe,
             optional<bool> with_statistics )const
 {
-   //ilog("g1");
+   ilog("g1");
    FC_ASSERT( _app_options, "Internal error" );
    //ilog("g2");
    const auto configured_limit = _app_options->api_limit_get_liquidity_pools;
