@@ -1924,15 +1924,15 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
    //ilog("g6");
    vector<optional<extended_liquidity_pool_object>> result; result.reserve(ids.size());
 
-   ilog("g7");
+   //ilog("g7");
    for( auto id : ids )
    {
    //ilog("g8");
       if( auto o = _db.find(id) )
       {
-   ilog("g9");
+   //ilog("g9");
          auto ext_obj = extend_liquidity_pool( *o, with_stats );
-   ilog("g10");
+   //ilog("g10");
          if( to_subscribe )
          {
    //ilog("g11");
