@@ -1946,7 +1946,7 @@ vector<optional<extended_liquidity_pool_object>> database_api_impl::get_liquidit
             }
          }
    ilog("g15");
-         optional<extended_liquidity_pool_object> oelp( ext_obj );
+         optional<extended_liquidity_pool_object> oelp( std::move( ext_obj ) );
    ilog("g15.1");
          result.push_back( oelp );
       }
