@@ -6,7 +6,7 @@ env:
 jobs:
   build-osx:
     name: Build and run tests on OSX
-    runs-on: macos-10.15
+    runs-on: macos-11.0
     steps:
     - name: Install dependencies
       run: |
