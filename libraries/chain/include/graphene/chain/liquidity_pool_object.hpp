@@ -56,6 +56,8 @@ class liquidity_pool_object : public abstract_object<liquidity_pool_object>
       uint16_t        withdrawal_fee_percent = 0;  ///< Withdrawal fee percent
       fc::uint128_t   virtual_value = 0;           ///< Virtual value of the pool
 
+      virtual ~liquidity_pool_object() {}
+
       void update_virtual_value()
       {
          virtual_value = fc::uint128_t( balance_a.value ) * balance_b.value;
