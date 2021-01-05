@@ -15,10 +15,16 @@ jobs:
         image: docker://elasticsearch:7.4.2
         options: --env discovery.type=single-node --publish 9200:9200 --publish 9300:9300
     steps:
+    - name: Get latest sonar version
+      run: |
+        echo 'SONAR_SCANNER_VERSION<<EOF' >> $GITHUB_ENV
+        curl https://github.com/SonarSource/sonar-scanner-cli/releases/latest 2>/dev/null \
+             | cut -f2 -d'"' | cut -f8 -d'/' >> $GITHUB_ENV
+        echo 'EOF' >> $GITHUB_ENV
     - name: Setup sonarqube
       uses: warchant/setup-sonar-scanner@v3
       with:
-        version: "latest"
+        version: ${{ SONAR_SCANNER_VERSION }}
     - name: Install dependencies
       run: |
         sudo apt-get update
