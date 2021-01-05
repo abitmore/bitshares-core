@@ -17,6 +17,7 @@ jobs:
     steps:
     - name: Setup sonarqube
       uses: warchant/setup-sonar-scanner@v3
+        version: 4.4.0.2170
     - name: Install dependencies
       run: |
         sudo apt-get update
