@@ -71,7 +71,7 @@ jobs:
       run: |
         export CCACHE_DIR="$GITHUB_WORKSPACE/ccache"
         mkdir -p "$CCACHE_DIR"
-        make -j 2 -C _build
+        build-wrapper-linux-x86-64 --out-dir bw-output make -j 2 -C _build
         df -h
     - name: Unit-Tests
       run: |
@@ -86,3 +86,11 @@ jobs:
         pushd _build
         ../programs/build_helpers/run-node-test
         df -h
+    - name: Run sonarqube
+      env:
+        # to get access to secrets.SONAR_TOKEN, provide GITHUB_TOKEN
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        sonar-scanner \
+           -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+           -Dsonar.host.url=https://sonarcloud.io/
