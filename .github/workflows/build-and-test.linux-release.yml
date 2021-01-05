@@ -24,7 +24,7 @@ jobs:
     - name: Setup sonarqube
       uses: warchant/setup-sonar-scanner@v3
       with:
-        version: $SONAR_SCANNER_VERSION
+        version: ${{ env.SONAR_SCANNER_VERSION }}
     - name: Install dependencies
       run: |
         sudo apt-get update
