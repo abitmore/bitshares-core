@@ -15,6 +15,8 @@ jobs:
         image: docker://elasticsearch:7.4.2
         options: --env discovery.type=single-node --publish 9200:9200 --publish 9300:9300
     steps:
+    - name: Setup sonarqube
+      uses: warchant/setup-sonar-scanner@v3
     - name: Install dependencies
       run: |
         sudo apt-get update
