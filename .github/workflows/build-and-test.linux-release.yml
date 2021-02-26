@@ -110,5 +110,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         sonar-scanner \
-           -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-           -Dsonar.host.url=https://sonarcloud.io/
+           -Dsonar.login=${{ secrets.SONAR_TOKEN }}
