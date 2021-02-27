@@ -29,7 +29,7 @@ jobs:
         SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
         echo "SONAR_SCANNER_VERSION=$SONAR_SCANNER_VERSION" >> $GITHUB_ENV
         echo "SONAR_SCANNER_HOME=$SONAR_SCANNER_HOME" >> $GITHUB_ENV
-        echo "SONAR_SCANNER_OPTS=\"-server\"" >> $GITHUB_ENV
+        echo "SONAR_SCANNER_OPTS=-server" >> $GITHUB_ENV
         echo "$SONAR_SCANNER_HOME/bin" >> $GITHUB_PATH
         echo "$HOME/.sonar/build-wrapper-linux-x86" >> $GITHUB_PATH
     #- name: Setup sonarqube
