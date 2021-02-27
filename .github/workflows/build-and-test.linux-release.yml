@@ -104,7 +104,6 @@ jobs:
         pushd _build
         ../programs/build_helpers/run-node-test
         df -h
-    - uses: nelonoel/branch-name@v1.0.1
     - name: Run sonarqube
       env:
         # to get access to secrets.SONAR_TOKEN, provide GITHUB_TOKEN
@@ -112,4 +111,4 @@ jobs:
       run: |
         sonar-scanner \
            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-           -Dsonar.branch.name=${BRANCH_NAME}
+           -Dsonar.branch.name=${GITHUB_REF#refs/heads/}
