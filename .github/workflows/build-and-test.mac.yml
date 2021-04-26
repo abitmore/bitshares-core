@@ -15,10 +15,10 @@ jobs:
     - name: Install dependencies
       run: |
         brew update
-        brew install autoconf automake libtool
-        brew install ccache
-        brew install parallel
-        brew install boost
+        brew install -f autoconf automake libtool
+        brew install -f ccache
+        brew install -f parallel
+        brew install -f boost
     - uses: actions/checkout@v2
       with:
         submodules: recursive
