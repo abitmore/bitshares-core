@@ -43,6 +43,7 @@ jobs:
     - name: Build
       run: |
         export CCACHE_DIR="$GITHUB_WORKSPACE/ccache"
+        export LIBRARY_PATH=${LIBRARY_PATH}:/usr/local/opt/icu4c/lib
         mkdir -p "$CCACHE_DIR"
         make -j 2 -C _build witness_node cli_wallet app_test cli_test chain_test
         df -h
