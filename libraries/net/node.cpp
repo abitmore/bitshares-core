@@ -2367,7 +2367,8 @@ namespace graphene { namespace net { namespace detail {
           disconnect_from_peer(originating_peer, "You are missing a sync item you claim to have, your database is probably corrupted. Try --rebuild-index.",true,
                                fc::exception(FC_LOG_MESSAGE(error,"You are missing a sync item you claim to have, your database is probably corrupted. Try --rebuild-index.",
                                ("item_id", requested_item))));
-        wlog("Peer doesn't have the requested sync item.  This really shouldn't happen");
+        wlog("Peer doesn't have the requested sync item.  This really shouldn't happen. ${item}",
+             ("item",requested_item));
         trigger_fetch_sync_items_loop();
         return;
       }
