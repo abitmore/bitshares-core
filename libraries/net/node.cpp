@@ -383,7 +383,7 @@ namespace graphene { namespace net { namespace detail {
     void node_impl::request_sync_item_from_peer( const peer_connection_ptr& peer, const item_hash_t& item_to_request )
     {
       VERIFY_CORRECT_THREAD();
-      dlog( "requesting item ${item_hash} from peer ${endpoint}", ("item_hash", item_to_request )("endpoint", peer->get_remote_endpoint() ) );
+      ilog( "requesting item ${item_hash} from peer ${endpoint}", ("item_hash", item_to_request )("endpoint", peer->get_remote_endpoint() ) );
       item_id item_id_to_request( graphene::net::block_message_type, item_to_request );
       _active_sync_requests.insert( active_sync_requests_map::value_type(item_to_request, fc::time_point::now() ) );
       peer->last_sync_item_received_time = fc::time_point::now();
@@ -394,7 +394,7 @@ namespace graphene { namespace net { namespace detail {
     void node_impl::request_sync_items_from_peer( const peer_connection_ptr& peer, const std::vector<item_hash_t>& items_to_request )
     {
       VERIFY_CORRECT_THREAD();
-      dlog( "requesting ${item_count} item(s) ${items_to_request} from peer ${endpoint}",
+      ilog( "requesting ${item_count} item(s) ${items_to_request} from peer ${endpoint}",
             ("item_count", items_to_request.size())("items_to_request", items_to_request)("endpoint", peer->get_remote_endpoint()) );
       for (const item_hash_t& item_to_request : items_to_request)
       {
@@ -411,7 +411,7 @@ namespace graphene { namespace net { namespace detail {
       while( !_fetch_sync_items_loop_done.canceled() )
       {
         _sync_items_to_fetch_updated = false;
-        dlog( "beginning another iteration of the sync items loop" );
+        ilog( "beginning another iteration of the sync items loop" );
 
         if (!_suspend_fetching_sync_blocks)
         {
@@ -461,11 +461,11 @@ namespace graphene { namespace net { namespace detail {
           sync_item_requests_to_send.clear();
         }
         else
-          dlog("fetch_sync_items_loop is suspended pending backlog processing");
+          ilog("fetch_sync_items_loop is suspended pending backlog processing");
 
         if( !_sync_items_to_fetch_updated )
         {
-          dlog( "no sync items to fetch right now, going to sleep" );
+          ilog( "no sync items to fetch right now, going to sleep" );
           _retrigger_fetch_sync_items_loop_promise
                 = fc::promise<void>::create("graphene::net::retrigger_fetch_sync_items_loop");
           _retrigger_fetch_sync_items_loop_promise->wait();
@@ -477,7 +477,7 @@ namespace graphene { namespace net { namespace detail {
     void node_impl::trigger_fetch_sync_items_loop()
     {
       VERIFY_CORRECT_THREAD();
-      dlog( "Triggering fetch sync items loop now" );
+      ilog( "Triggering fetch sync items loop now" );
       _sync_items_to_fetch_updated = true;
       if( _retrigger_fetch_sync_items_loop_promise )
         _retrigger_fetch_sync_items_loop_promise->set_value();
@@ -2367,7 +2367,8 @@ namespace graphene { namespace net { namespace detail {
           disconnect_from_peer(originating_peer, "You are missing a sync item you claim to have, your database is probably corrupted. Try --rebuild-index.",true,
                                fc::exception(FC_LOG_MESSAGE(error,"You are missing a sync item you claim to have, your database is probably corrupted. Try --rebuild-index.",
                                ("item_id", requested_item))));
-        wlog("Peer doesn't have the requested sync item.  This really shouldn't happen. ${item}",
+        wlog("Peer doesn't have the requested sync item.  This really shouldn't happen. ${peer} ${item}",
+             ("peer",originating_peer->get_remote_endpoint())
              ("item",requested_item));
         trigger_fetch_sync_items_loop();
         return;
@@ -2918,7 +2919,9 @@ namespace graphene { namespace net { namespace detail {
                                                const message_hash_type& )
     {
       VERIFY_CORRECT_THREAD();
-      dlog( "received a sync block from peer ${endpoint}", ("endpoint", originating_peer->get_remote_endpoint() ) );
+      ilog( "received a sync block from peer ${endpoint} ${block}",
+            ("endpoint", originating_peer->get_remote_endpoint() )
+            ("block", block_message_to_process ) );
 
       // add it to the front of _received_sync_items, then process _received_sync_items to try to
       // pass as many messages as possible to the client.
