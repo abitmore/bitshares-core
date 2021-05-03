@@ -4,12 +4,12 @@ DATA_DIR="`mktemp -d`"
 
 cleanup () {
     kill -9 $NODE_PID $CLI_PID
-    if [ "$1" != 0 ]; then
+    #if [ "$1" != 0 ]; then
 	echo "----- node.log -----"
 	cat node.log
 	echo "----- cli.log -----"
 	cat cli.log
-    fi
+    #fi
     rm -rf node.log cli.log "$DATA_DIR"
     exit $1
 }
