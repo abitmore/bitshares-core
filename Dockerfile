@@ -37,6 +37,8 @@ WORKDIR /bitshares-core
 
 # Compile
 RUN \
+    git status && \
+    git log -1 && \
     ( git submodule sync --recursive || \
       find `pwd`  -type f -name .git | \
 	while read f; do \
