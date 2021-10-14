@@ -14,4 +14,4 @@ jobs:
         file: Dockerfile1
         #push: false
         tags: user/app:latest
-        build-args: "git.keepgitdir=true"
+        build-args: " KeepGitDir "
