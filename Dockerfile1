@@ -37,6 +37,8 @@ WORKDIR /bitshares-core
 
 # Compile
 RUN \
+    git status && \
+    git log -1 && \
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
 	-DGRAPHENE_DISABLE_UNITY_BUILD=ON \
