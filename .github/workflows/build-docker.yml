@@ -8,7 +8,7 @@ jobs:
       uses: docker/setup-buildx-action@v1
     - name: Build (and do not push)
       id: docker_build
-      uses: abitmore/build-push-action@v3
+      uses: abitmore/build-push-action@v5
       with:
         load: true
         file: Dockerfile1
