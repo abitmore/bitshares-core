@@ -1,10 +1,6 @@
 FROM phusion/baseimage:focal-1.0.0
 MAINTAINER The bitshares decentralized organisation
 
-RUN \
-    git status && \
-    git log -1
-
 ENV LANG=en_US.UTF-8
 RUN \
     apt-get update -y && \
