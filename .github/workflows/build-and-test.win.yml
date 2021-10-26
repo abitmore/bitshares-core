@@ -6,13 +6,13 @@ env:
   # The following are for windows cross-build only:
   BOOST_VERSION: 1_69_0
   BOOST_DOTTED_VERSION: 1.69.0
-  CURL_VERSION: 7.67.0
-  OPENSSL_VERSION: 1.1.1d
+  CURL_VERSION: 7.74.0
+  OPENSSL_VERSION: 1.1.1i
   ZLIB_VERSION: 1.2.11
 jobs:
   prepare-mingw64-libs:
     name: Build required 3rd-party libraries
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
     # Get OS version to be used in cache key - see https://github.com/actions/cache/issues/543
     - run: |
@@ -100,7 +100,7 @@ jobs:
              install
   build-mingw64:
     name: Cross-build for windows using mingw
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     needs: prepare-mingw64-libs
     steps:
     - name: Install dependencies
