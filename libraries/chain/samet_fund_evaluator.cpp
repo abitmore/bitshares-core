@@ -123,6 +123,12 @@ void_result samet_fund_update_evaluator::do_evaluate(const samet_fund_update_ope
       FC_ASSERT( _fund->fee_rate != *op.new_fee_rate,
                  "New fee rate should not be the same as the original fee rate" );
    }
+   else
+   {
+      // testnet only
+      FC_ASSERT( HARDFORK_TEST_2523_PASSED( d.head_block_time() ),
+                 "New fee rate can only be valid before HF test-2523 on the testnet" );
+   }
 
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (op) ) }

@@ -161,6 +161,12 @@ BOOST_AUTO_TEST_CASE( samet_fund_crud_and_proposal_test )
          propose( rop );
       }
 
+      // For testnet only: unable to propose samet_fund_update_op if new_fee_rate is not valid before hf test-2523
+      {
+         samet_fund_update_operation uop = make_samet_fund_update_op( sam_id, tmp_sf_id, core.amount(100), {} );
+         BOOST_CHECK_THROW( propose( uop ), fc::exception );
+      }
+
       int64_t expected_balance_sam_core = init_amount;
       int64_t expected_balance_sam_usd = init_amount;
       int64_t expected_balance_sam_eur = init_amount;
@@ -243,6 +249,24 @@ BOOST_AUTO_TEST_CASE( samet_fund_crud_and_proposal_test )
       BOOST_CHECK_THROW( update_samet_fund( sam_id, sf1_id, asset(init_amount), {} ), fc::exception );
 
       check_balances();
+
+      // For testnet only: unable to only deposit or only withdraw before hf test-2523
+      BOOST_CHECK_THROW( update_samet_fund( sam_id, sf1_id, asset(1), {} ), fc::exception );
+      BOOST_CHECK_THROW( update_samet_fund( sam_id, sf1_id, asset(-1), {} ), fc::exception );
+
+      check_balances();
+
+      // For testnet only: pass the hf test-2523 time
+      generate_blocks( HARDFORK_TEST_2523_TIME );
+      set_expiration( db, trx );
+
+      check_balances();
+
+      // For testnet only: able to propose samet_fund_update_op if new_fee_rate is not valid after hf test-2523
+      {
+         samet_fund_update_operation uop = make_samet_fund_update_op( sam_id, tmp_sf_id, core.amount(100), {} );
+         propose( uop );
+      }
 
       // Able to update a fund with valid data
       // Only deposit

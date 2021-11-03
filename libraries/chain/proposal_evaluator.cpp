@@ -261,8 +261,14 @@ struct proposal_operation_hardfork_visitor
    void operator()(const graphene::chain::samet_fund_delete_operation&) const {
       FC_ASSERT( HARDFORK_CORE_2351_PASSED(block_time), "Not allowed until the core-2351 hardfork" );
    }
-   void operator()(const graphene::chain::samet_fund_update_operation&) const {
+   void operator()(const graphene::chain::samet_fund_update_operation& op) const {
       FC_ASSERT( HARDFORK_CORE_2351_PASSED(block_time), "Not allowed until the core-2351 hardfork" );
+      if( !op.new_fee_rate.valid() )
+      {
+         // testnet only
+         FC_ASSERT( HARDFORK_TEST_2523_PASSED(block_time),
+                    "New fee rate can only be valid before HF test-2523 on the testnet" );
+      }
    }
    void operator()(const graphene::chain::samet_fund_borrow_operation&) const {
       FC_ASSERT( HARDFORK_CORE_2351_PASSED(block_time), "Not allowed until the core-2351 hardfork" );

@@ -1,0 +1,6 @@
+// HF protection for testnet only about default value of samet_fund_update_operation::new_fee_rate
+// https://github.com/bitshares/bitshares-core/pull/2523
+#ifndef HARDFORK_TEST_2523_TIME
+#define HARDFORK_TEST_2523_TIME (fc::time_point_sec( 1636466520 )) // testnet, Tuesday, November 9, 2021 14:02:00 UTC
+#define HARDFORK_TEST_2523_PASSED(now) (now >= HARDFORK_TEST_2523_TIME)
+#endif
