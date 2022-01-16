@@ -281,6 +281,14 @@ curl_wrapper::http_response curl_wrapper::request( curl_wrapper::http_request_me
                                                    const std::string& auth,
                                                    const std::string& query ) const
 {
+   if( !curl )
+   {
+      ilog( "curl is null" );
+      FC_THROW( "curl is null" );
+   }
+   else
+      ilog( "curl is not null" );
+
    curl_wrapper::http_response resp;
 
    // Note: the variable curl has a long lifetime, it only gets initialized once, then be used many times,
