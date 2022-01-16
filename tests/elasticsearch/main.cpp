@@ -49,6 +49,27 @@ BOOST_FIXTURE_TEST_SUITE( elasticsearch_tests, database_fixture )
 BOOST_AUTO_TEST_CASE(elasticsearch_account_history) {
    try {
 
+      {
+         graphene::utilities::curl_wrapper cw;
+         auto resp = cw.get(GRAPHENE_TESTING_ES_URL, "");
+         wlog( "resp code ${code} content ${content}", ("code",resp.code) ("content",resp.content) );
+      }
+
+      {
+         graphene::utilities::es_client ec1( GRAPHENE_TESTING_ES_URL, "" );
+         wdump( (ec1.get_version()) );
+      }
+
+      {
+         graphene::utilities::es_client ec2( GRAPHENE_TESTING_ES_URL, "a:b" );
+         wdump( (ec2.check_status()) );
+      }
+
+      {
+         graphene::utilities::es_client ec3( "http://127.0.0.1:19200/", "a:b" );
+         wdump( (ec3.check_status()) );
+      }
+
       CURL *curl; // curl handler
       curl = curl_easy_init();
       curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
