@@ -253,14 +253,27 @@ curl_wrapper::curl_wrapper()
 
 void curl_wrapper::curl_deleter::operator()( CURL* curl ) const
 {
+   wlog( "curl_deleter called" );
    if( !curl )
+   {
+      wlog( "curl_deleter cleanup" );
       curl_easy_cleanup( curl );
+   }
+   else
+      wlog( "curl_deleter: nullptr" );
+   
 }
 
 void curl_wrapper::curl_slist_deleter::operator()( curl_slist* slist ) const
 {
+   wlog( "curl_slist_deleter called" );
    if( !slist )
+   {
+      wlog( "curl_slist_deleter cleanup" );
       curl_slist_free_all( slist );
+   }
+   else
+      wlog( "curl_slist_deleter: nullptr" );
 }
 
 curl_wrapper::http_response curl_wrapper::request( curl_wrapper::http_request_method method,
