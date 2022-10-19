@@ -144,9 +144,17 @@ namespace graphene { namespace db {
          IndexType* add_index()
          {
             using ObjectType = typename IndexType::object_type;
+            FC_ASSERT( ObjectType::space_id < _index.size(),
+                       "Space ID ${s} overflow",
+                       ("s",ObjectType::space_id) );
             if( _index[ObjectType::space_id].size() <= ObjectType::type_id )
                 _index[ObjectType::space_id].resize( _index_size );
-            assert(!_index[ObjectType::space_id][ObjectType::type_id]);
+            FC_ASSERT( ObjectType::type_id < _index[ObjectType::space_id].size(),
+                       "Type ID ${t} overflow",
+                       ("t",ObjectType::type_id) );
+            FC_ASSERT( !_index[ObjectType::space_id][ObjectType::type_id],
+                       "Index ${s}.${t} already exists",
+                       ("s",ObjectType::space_id)("t",ObjectType::type_id) );
             std::unique_ptr<index> indexptr( std::make_unique<IndexType>(*this) );
             _index[ObjectType::space_id][ObjectType::type_id] = std::move(indexptr);
             return static_cast<IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
