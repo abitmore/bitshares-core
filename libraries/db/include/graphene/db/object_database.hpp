@@ -155,8 +155,7 @@ namespace graphene { namespace db {
             FC_ASSERT( !_index[ObjectType::space_id][ObjectType::type_id],
                        "Index ${s}.${t} already exists",
                        ("s",ObjectType::space_id)("t",ObjectType::type_id) );
-            std::unique_ptr<index> indexptr( std::make_unique<IndexType>(*this) );
-            _index[ObjectType::space_id][ObjectType::type_id] = std::move(indexptr);
+            _index[ObjectType::space_id][ObjectType::type_id] = std::make_unique<IndexType>(*this);
             return static_cast<IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
          }
 
