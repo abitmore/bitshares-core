@@ -104,7 +104,7 @@ jobs:
         make -j 2 -C _build es_test
         make -j 2 -C _build cli_wallet
         make -j 2 -C _build witness_node
-        make -j 2 -C _build
+        make -j 1 -C _build
         df -h
         du -hs _build/libraries/* _build/programs/* _build/tests/*
         du -hs _build/*
